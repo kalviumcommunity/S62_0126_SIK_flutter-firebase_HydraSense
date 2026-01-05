@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'login_screen.dart';
+import 'signup_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -34,7 +36,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               size: 80,
               color: Colors.blue,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
+
+            // 🔔 Your existing alert toggle
             ElevatedButton(
               onPressed: () {
                 setState(() {
@@ -42,6 +46,31 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 });
               },
               child: const Text('Toggle Alert'),
+            ),
+
+            const SizedBox(height: 30),
+
+            // 🔐 Auth buttons
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                );
+              },
+              child: const Text('Login'),
+            ),
+
+            const SizedBox(height: 10),
+
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SignupScreen()),
+                );
+              },
+              child: const Text('Sign Up'),
             ),
           ],
         ),
