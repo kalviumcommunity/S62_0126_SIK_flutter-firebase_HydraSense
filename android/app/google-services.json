@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "707732855506",
+    "project_id": "hydrasense-9ba6b",
+    "storage_bucket": "hydrasense-9ba6b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:707732855506:android:c153da84ec4d0afed1eb0b",
+        "android_client_info": {
+          "package_name": "com.example.sw2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDOXFzNe-KNdqfwZYFc6UumKgpUdwZfaHE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
