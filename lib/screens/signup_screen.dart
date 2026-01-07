@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
-import '../services/firestore_service.dart';
+import '../controllers/auth_controller.dart';
 import 'welcomescreen.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -11,11 +10,10 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
 
-  final AuthService _auth = AuthService();
-  final FirestoreService _firestore = FirestoreService();
+  final AuthController _authController = AuthController();
 
   bool isLoading = false;
   String error = '';
@@ -39,11 +37,11 @@ class _SignupScreenState extends State<SignupScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: passwordController,
+              obscureText: true,
               decoration: const InputDecoration(
                 labelText: 'Password',
                 border: OutlineInputBorder(),
               ),
-              obscureText: true,
             ),
             const SizedBox(height: 20),
 
@@ -58,14 +56,14 @@ class _SignupScreenState extends State<SignupScreen> {
                         error = '';
                       });
 
-                      final user = await _auth.signUp(
-                        emailController.text.trim(),
-                        passwordController.text.trim(),
+                      final success = await _authController.signup(
+                        emailController.text,
+                        passwordController.text,
                       );
 
                       if (!mounted) return;
 
-                      if (user == null) {
+                      if (!success) {
                         setState(() {
                           error = 'Signup failed';
                           isLoading = false;
@@ -73,13 +71,6 @@ class _SignupScreenState extends State<SignupScreen> {
                         return;
                       }
 
-                      // Firestore in background
-                      _firestore.createUser(
-                        user.uid,
-                        emailController.text.trim(),
-                      );
-
-                      // 🔥 WEB-SAFE NAVIGATION
                       Navigator.of(context).pushReplacement(
                         MaterialPageRoute(
                           builder: (_) => const WelcomeScreen(),
