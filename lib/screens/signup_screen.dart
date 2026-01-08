@@ -21,7 +21,12 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Sign Up')),
+      appBar: AppBar(
+        title: const Text(
+          'Sign Up',
+          style: TextStyle(color: Color.fromARGB(255, 14, 61, 99)),
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -83,10 +88,7 @@ class _SignupScreenState extends State<SignupScreen> {
             if (error.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
-                child: Text(
-                  error,
-                  style: const TextStyle(color: Colors.red),
-                ),
+                child: Text(error, style: const TextStyle(color: Colors.red)),
               ),
           ],
         ),
