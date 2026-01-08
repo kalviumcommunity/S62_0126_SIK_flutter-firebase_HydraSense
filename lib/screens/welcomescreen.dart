@@ -15,9 +15,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('HydraSense'),
-      ),
+      extendBodyBehindAppBar: true,
+      backgroundColor: isAlertOn
+          ? const Color.fromARGB(255, 255, 0, 25)
+          : Colors.white,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -27,15 +28,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
-                color: isAlertOn ? Colors.red : Colors.black,
+                color: isAlertOn ? const Color.fromARGB(255, 0, 0, 0) : Colors.black,
               ),
             ),
-            const SizedBox(height: 20),
-            const Icon(
-              Icons.water,
-              size: 80,
-              color: Colors.blue,
-            ),
+
+            const Icon(Icons.water, size: 80, color: Colors.blue),
             const SizedBox(height: 30),
 
             // 🔔 Your existing alert toggle
