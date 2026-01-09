@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'welcomescreen.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -23,20 +22,34 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       child: Scaffold(
-        backgroundColor: const Color.fromARGB(0, 0, 0, 0),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'Welcome to HydraSense!',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+        backgroundColor: Colors.transparent,
+
+        floatingActionButton: FloatingActionButton(
+          onPressed: () async {
+            await FirebaseAuth.instance.signOut();
+
+            if (!context.mounted) return;
+
+            // ✅ THIS IS WHAT YOU WERE MISSING
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const WelcomeScreen(),
               ),
-            ],
+              (_) => false,
+            );
+          },
+          child: const Icon(Icons.logout),
+        ),
+
+        body: Center(
+          child: Text(
+            'Welcome, ${user?.email}',
+            style: const TextStyle(
+              fontSize: 22,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ),
