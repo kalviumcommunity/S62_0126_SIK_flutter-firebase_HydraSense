@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../controllers/auth_controller.dart';
 import 'home_screen.dart';
-import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,23 +10,17 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
   final AuthController _authController = AuthController();
 
-  String errorMessage = '';
   bool isLoading = false;
+  String error = '';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Login',
-          style: TextStyle(color: Color.fromARGB(255, 14, 61, 99)),
-        ),
-      ),
+      appBar: AppBar(title: const Text('Login')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -35,19 +28,13 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             TextField(
               controller: emailController,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Email'),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: passwordController,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Password',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Password'),
             ),
             const SizedBox(height: 20),
 
@@ -57,7 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () async {
                       setState(() {
                         isLoading = true;
-                        errorMessage = '';
+                        error = '';
                       });
 
                       final success = await _authController.login(
@@ -67,47 +54,33 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       if (!mounted) return;
 
-                      setState(() {
-                        isLoading = false;
-                      });
-
                       if (!success) {
                         setState(() {
-                          errorMessage = 'Invalid email or password';
+                          error = 'Invalid credentials';
+                          isLoading = false;
                         });
-                      } else {
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const HomeScreen(),
-                          ),
-                          (_) => false,
-                        );
+                        return;
                       }
+
+                      // ✅ FIX: NAVIGATE
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const HomeScreen(),
+                        ),
+                      );
                     },
                     child: const Text('Login'),
                   ),
 
-            if (errorMessage.isNotEmpty)
+            if (error.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.only(top: 10),
+                padding: const EdgeInsets.only(top: 12),
                 child: Text(
-                  errorMessage,
+                  error,
                   style: const TextStyle(color: Colors.red),
                 ),
               ),
-
-            const SizedBox(height: 20),
-
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SignupScreen()),
-                );
-              },
-              child: const Text('Don’t have an account? Sign up'),
-            ),
           ],
         ),
       ),

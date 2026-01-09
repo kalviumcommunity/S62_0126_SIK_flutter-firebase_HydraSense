@@ -10,9 +10,8 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
   final AuthController _authController = AuthController();
 
   bool isLoading = false;
@@ -21,12 +20,7 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Sign Up',
-          style: TextStyle(color: Color.fromARGB(255, 14, 61, 99)),
-        ),
-      ),
+      appBar: AppBar(title: const Text('Sign Up')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -34,19 +28,13 @@ class _SignupScreenState extends State<SignupScreen> {
           children: [
             TextField(
               controller: emailController,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Email'),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: passwordController,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Password',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Password'),
             ),
             const SizedBox(height: 20),
 
@@ -54,8 +42,6 @@ class _SignupScreenState extends State<SignupScreen> {
                 ? const CircularProgressIndicator()
                 : ElevatedButton(
                     onPressed: () async {
-                      if (isLoading) return;
-
                       setState(() {
                         isLoading = true;
                         error = '';
@@ -76,8 +62,12 @@ class _SignupScreenState extends State<SignupScreen> {
                         return;
                       }
 
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => const HomeScreen()),
+                      // ✅ FIX: NAVIGATE
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const HomeScreen(),
+                        ),
                       );
                     },
                     child: const Text('Sign Up'),
@@ -86,7 +76,10 @@ class _SignupScreenState extends State<SignupScreen> {
             if (error.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
-                child: Text(error, style: const TextStyle(color: Colors.red)),
+                child: Text(
+                  error,
+                  style: const TextStyle(color: Colors.red),
+                ),
               ),
           ],
         ),

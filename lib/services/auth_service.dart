@@ -4,8 +4,7 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   AuthService() {
-    // 🔥 CRITICAL FOR FLUTTER WEB
-    _auth.setPersistence(Persistence.NONE);
+    _auth.setPersistence(Persistence.LOCAL);
   }
 
   Future<User?> signUp(String email, String password) async {
