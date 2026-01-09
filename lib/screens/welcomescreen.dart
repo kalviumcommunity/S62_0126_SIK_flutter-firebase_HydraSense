@@ -12,136 +12,68 @@ class WelcomeScreen extends StatefulWidget {
 class _WelcomeScreenState extends State<WelcomeScreen> {
   @override
   Widget build(BuildContext context) {
-//     return Container(
-//       decoration: const BoxDecoration(
-//         gradient: LinearGradient(
-//           begin: Alignment.topCenter,
-//           end: Alignment.bottomCenter,
-//           colors: [
-//             Color.fromARGB(255, 8, 84, 117),
-//             Color.fromARGB(255, 31, 131, 194),
-//             Color.fromARGB(255, 1, 31, 43),
-//           ],
-//         ),
-//       ),
-//       child: Scaffold(
-//         backgroundColor: const Color.fromARGB(0, 0, 0, 0),
-//         body: Center(
-//           child: Column(
-//             mainAxisAlignment: MainAxisAlignment.center,
-//             children: [
-//               const Icon(
-//                 Icons.water_drop,
-//                 size: 80,
-//                 color: Color.fromARGB(255, 81, 177, 233),
-//               ),
-
-//               // 🔐 Auth buttons
-//               ElevatedButton(
-//                 onPressed: () {
-//                   Navigator.push(
-//                     context,
-//                     MaterialPageRoute(builder: (_) => const LoginScreen()),
-//                   );
-//                 },
-//                 style: ElevatedButton.styleFrom(
-//                   backgroundColor: const Color.fromARGB(255, 154, 206, 248),
-//                 ),
-//                 child: const Text(
-//                   'Login',
-//                   style: TextStyle(color: Color.fromARGB(255, 14, 61, 99)),
-//                 ),
-//               ),
-
-//               const SizedBox(height: 10),
-
-//               ElevatedButton(
-//                 onPressed: () {
-//                   Navigator.push(
-//                     context,
-//                     MaterialPageRoute(builder: (_) => const SignupScreen()),
-//                   );
-//                 },
-//                 style: ElevatedButton.styleFrom(
-//                   backgroundColor: const Color.fromARGB(255, 154, 206, 248),
-//                 ),
-//                 child: const Text(
-//                   'Sign Up',
-//                   style: TextStyle(color: Color.fromARGB(255, 14, 61, 99)),
-//                 ),
-//               ),
-//             ],
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-return Container(
-  decoration: BoxDecoration(
-    image: const DecorationImage(
-      image: AssetImage('assets/wp3359036.jpg'),
-      fit: BoxFit.cover,
-    ),
-    gradient: LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [
-        Color.fromARGB(180, 8, 84, 117), // semi-transparent
-        Color.fromARGB(180, 31, 131, 194),
-        Color.fromARGB(200, 1, 31, 43),
-      ],
-    ),
-  ),
-  child: Scaffold(
-    backgroundColor: Colors.transparent,
-    body: Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.water_drop,
-            size: 80,
-            color: Color.fromARGB(255, 81, 177, 233),
-          ),
-
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color.fromARGB(255, 154, 206, 248),
-            ),
-            child: const Text(
-              'Login',
-              style: TextStyle(color: Color.fromARGB(255, 14, 61, 99)),
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SignupScreen()),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color.fromARGB(255, 154, 206, 248),
-            ),
-            child: const Text(
-              'Sign Up',
-              style: TextStyle(color: Color.fromARGB(255, 14, 61, 99)),
-            ),
-          ),
-        ],
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color.fromARGB(255, 8, 84, 117),
+            Color.fromARGB(255, 31, 131, 194),
+            Color.fromARGB(255, 1, 31, 43),
+          ],
+        ),
       ),
-    ),
-  ),
-);
+      child: Scaffold(
+        backgroundColor: const Color.fromARGB(0, 0, 0, 0),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.water_drop,
+                size: 80,
+                color: Color.fromARGB(255, 81, 177, 233),
+              ),
+
+              // 🔐 Auth buttons
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color.fromARGB(255, 154, 206, 248),
+                ),
+                child: const Text(
+                  'Login',
+                  style: TextStyle(color: Color.fromARGB(255, 14, 61, 99)),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SignupScreen()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color.fromARGB(255, 154, 206, 248),
+                ),
+                child: const Text(
+                  'Sign Up',
+                  style: TextStyle(color: Color.fromARGB(255, 14, 61, 99)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
