@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'screens/landing_pager.dart';
 
 import 'firebase_options.dart';
-import 'screens/welcomescreen.dart';
 import 'screens/home_screen.dart';
+import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +23,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'HydraSense',
-      home: StreamBuilder<User?>(
+      home: SplashScreen(
+        child: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
           // ⏳ while Firebase checks stored session
@@ -38,8 +40,9 @@ class MyApp extends StatelessWidget {
           }
 
           // ❌ User logged out
-          return const WelcomeScreen();
+          return const LandingPager();
         },
+      ),
       ),
     );
   }

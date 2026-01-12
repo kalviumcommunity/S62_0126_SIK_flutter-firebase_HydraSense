@@ -22,6 +22,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  assets: 
-    - assets/wp3359036.jpg
+  assets:
+    - assets/bg.png
+    - assets/welcome_hydrasense.png
+    - assets/location.png
   
