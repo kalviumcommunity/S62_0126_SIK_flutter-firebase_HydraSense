@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../painters/location_painter.dart';
 import 'dart:math' as math;
 
 class LandingPage2 extends StatefulWidget {

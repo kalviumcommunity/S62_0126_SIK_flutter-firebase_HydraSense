@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 import '../painters/location_painter.dart';
 import 'welcomescreen.dart';
 
