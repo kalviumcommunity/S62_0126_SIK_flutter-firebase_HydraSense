@@ -19,9 +19,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // 🔴 PHASE 2: Dummy current flood risk (Chennai)
   final LatLng _floodCenter = LatLng(13.0827, 80.2707);
   final double _currentFloodRadius = 5000;
+  final double? _predictedFloodRadius = 8000;
   final String _currentRiskLevel = 'HIGH';
   
   // Multiple flood zones for realistic effect
+  // ignore: unused_field
   final List<Map<String, dynamic>> _floodZones = [
     {'center': LatLng(13.0827, 80.2707), 'radius': 3000.0, 'severity': 'CRITICAL'},
     {'center': LatLng(13.0927, 80.2807), 'radius': 2000.0, 'severity': 'HIGH'},
@@ -258,6 +260,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     borderColor: _getFloodColor(),
                     borderStrokeWidth: 2,
                   ),
+                  if (_predictedFloodRadius != null &&
+                    _predictedFloodRadius > _currentFloodRadius)
+                    CircleMarker(
+                      point: _floodCenter,
+                      radius: _predictedFloodRadius,
+                      useRadiusInMeter: true,
+                      color: _getFloodColor().withOpacity(0.15),
+                      borderStrokeWidth: 1,
+                      borderColor: _getFloodColor().withOpacity(0.4),
+                    ),
                 ],
               ),
               // User location marker
