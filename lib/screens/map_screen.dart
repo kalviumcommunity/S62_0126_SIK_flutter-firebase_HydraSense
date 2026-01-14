@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:sw2/utils/risk_ui_utils.dart';
 import 'package:sw2/widgets/flood_zones_layer.dart';
 import 'package:sw2/widgets/map_app_bar.dart';
 import 'package:sw2/widgets/risk_info_sheet.dart';
@@ -25,17 +26,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // 🔴 PHASE 2: Dummy current flood risk (Chennai)
   final LatLng _floodCenter = LatLng(13.0827, 80.2707);
   final double _currentFloodRadius = 5000;
-  final double? _predictedFloodRadius = 8000;
+  final double _predictedFloodRadius = 8000;
   final String _currentRiskLevel = 'HIGH';
-  
-  // Multiple flood zones for realistic effect
-  // ignore: unused_field
-  final List<Map<String, dynamic>> _floodZones = [
-    {'center': LatLng(13.0827, 80.2707), 'radius': 3000.0, 'severity': 'CRITICAL'},
-    {'center': LatLng(13.0927, 80.2807), 'radius': 2000.0, 'severity': 'HIGH'},
-    {'center': LatLng(13.0727, 80.2607), 'radius': 2500.0, 'severity': 'HIGH'},
-    {'center': LatLng(13.0627, 80.2907), 'radius': 1800.0, 'severity': 'MODERATE'},
-  ];
+
 
   // 🔵 User location
   LatLng? _userLocation;
@@ -60,30 +53,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     super.dispose();
   }
 
-  Color _getFloodColor() {
-    switch (_currentRiskLevel) {
-      case 'LOW':
-        return Colors.green;
-      case 'MODERATE':
-        return Colors.orange;
-      case 'HIGH':
-        return Colors.red;
-      default:
-        return Colors.transparent;
-    }
-  }
-  IconData _getRiskIcon() {
-    switch (_currentRiskLevel) {
-      case 'LOW':
-        return Icons.check_circle;
-      case 'MODERATE':
-        return Icons.warning_amber_rounded;
-      case 'HIGH':
-        return Icons.error;
-      default:
-        return Icons.info;
-    }
-  }
   void _onFloodZoneTap() {
     showRiskInfoSheet(
       context: context,
@@ -158,7 +127,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 center: _floodCenter,
                 currentRadius: _currentFloodRadius,
                 predictedRadius: _predictedFloodRadius,
-                color: _getFloodColor(),
+                color: getRiskColor(_currentRiskLevel),
               ),
               MarkerLayer(
                 markers: [
@@ -213,8 +182,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           if (_showRiskPanel)
             RiskPanel(
               riskLevel: _currentRiskLevel,
-              riskColor: _getFloodColor(),
-              riskIcon: _getRiskIcon(),
+              riskColor: getRiskColor(_currentRiskLevel),
+              riskIcon: getRiskIcon(_currentRiskLevel),
               onClose: () {
                 setState(() => _showRiskPanel = false);
               },
@@ -230,7 +199,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     _showRiskPanel = true;
                   });
                 },
-                backgroundColor: _getFloodColor(),
+                backgroundColor: getRiskColor(_currentRiskLevel),
                 child: const Icon(Icons.info_outline, color: Colors.white),
               ),
             ),
