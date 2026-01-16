@@ -1,17 +1,14 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 
 class LocationService {
-  /// Requests permission and returns current position if allowed
+  /// 📍 Current device location
   Future<Position?> getCurrentLocation() async {
-    // 1️⃣ Check if location services are enabled
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return null;
-    }
+    if (!serviceEnabled) return null;
 
-    // 2️⃣ Check permission status
     LocationPermission permission = await Geolocator.checkPermission();
-
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
@@ -21,9 +18,46 @@ class LocationService {
       return null;
     }
 
-    // 3️⃣ Permission granted → get location
     return await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
     );
   }
+
+  /// 📋 AUTOCOMPLETE suggestions (WORLDWIDE, MAX 3)
+  Future<List<Map<String, dynamic>>> getPlaceSuggestions(String query) async {
+    if (query.trim().length < 3) return [];
+
+    final url = Uri.https(
+      'nominatim.openstreetmap.org',
+      '/search',
+      {
+        'q': query,
+        'format': 'json',
+        'addressdetails': '1',
+        'limit': '3',
+      },
+    );
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {'User-Agent': 'HydraSense/1.0'},
+      );
+
+      if (response.statusCode != 200) return [];
+
+      final List data = json.decode(response.body);
+
+      return data.map<Map<String, dynamic>>((item) {
+        return {
+          'display': item['display_name'],
+          'lat': double.parse(item['lat']),
+          'lon': double.parse(item['lon']),
+        };
+      }).toList();
+    } catch (_) {
+      return [];
+    }
+  }
 }
+                                                      
