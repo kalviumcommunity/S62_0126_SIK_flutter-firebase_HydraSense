@@ -5,6 +5,8 @@ import '../services/firestore_service.dart';
 
 class RiskStateProvider extends ChangeNotifier {
   final FirestoreService _firestoreService;
+  RiskState? _selectedZone;
+  RiskState? get selectedZone => _selectedZone;
 
   RiskStateProvider(this._firestoreService);
 
@@ -22,6 +24,16 @@ class RiskStateProvider extends ChangeNotifier {
 
   int _retryDelay = 2;
   bool _isListening = false;
+
+  void selectZone(RiskState zone) {
+    _selectedZone = zone;
+    notifyListeners();
+  }
+
+  void clearSelection() {
+    _selectedZone = null;
+    notifyListeners();
+  }
 
   void startListeningAll() {
     if (_isListening) return;

@@ -2,18 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
-import 'package:sw2/models/risk_state.dart';
 
-import 'package:sw2/utils/risk_ui_utils.dart';
-import 'package:sw2/widgets/flood_zones_layer.dart';
-import 'package:sw2/widgets/map_app_bar.dart';
-import 'package:sw2/widgets/risk_info_sheet.dart';
-import 'package:sw2/widgets/risk_panel.dart';
-import 'package:sw2/widgets/search_location_dialog.dart';
-import 'package:sw2/widgets/user_location_marker.dart';
-
+import '../models/risk_state.dart';
 import '../state/risk_state_provider.dart';
 import '../services/location_service.dart';
+
+import '../utils/risk_ui_utils.dart';
+import '../widgets/flood_zones_layer.dart';
+import '../widgets/map_app_bar.dart';
+import '../widgets/risk_info_sheet.dart';
+import '../widgets/risk_panel.dart';
+import '../widgets/search_location_dialog.dart';
+import '../widgets/user_location_marker.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -43,6 +43,7 @@ class _MapScreenState extends State<MapScreen>
     )..repeat();
 
     _loadUserLocation();
+
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<RiskStateProvider>().startListeningAll();
@@ -74,9 +75,7 @@ class _MapScreenState extends State<MapScreen>
 
     final latLng = LatLng(position.latitude, position.longitude);
 
-    setState(() {
-      _userLocation = latLng;
-    });
+    setState(() => _userLocation = latLng);
 
     if (!_hasMovedCamera) {
       _mapController.move(latLng, 13);
@@ -85,6 +84,15 @@ class _MapScreenState extends State<MapScreen>
   }
 
   void _onFloodZoneTap(RiskState state) {
+    final provider = context.read<RiskStateProvider>();
+
+    provider.selectZone(state);
+
+    _mapController.move(
+      state.center,
+      _mapController.camera.zoom < 10 ? 10 : _mapController.camera.zoom,
+    );
+
     showRiskInfoSheet(
       context: context,
       districtName: state.districtId,
@@ -97,15 +105,13 @@ class _MapScreenState extends State<MapScreen>
     );
   }
 
+
   Future<void> _openSearchDialog() async {
     final place = await showSearchLocationDialog(context);
     if (place == null) return;
 
-    final double lat = place['lat'];
-    final double lon = place['lon'];
-
     _mapController.move(
-      LatLng(lat, lon),
+      LatLng(place['lat'], place['lon']),
       12,
     );
   }
@@ -122,10 +128,9 @@ class _MapScreenState extends State<MapScreen>
               initialZoom: 5,
               minZoom: 3,
               maxZoom: 18,
+              rotation: 0,
               interactionOptions: const InteractionOptions(
-                flags: InteractiveFlag.drag |
-                    InteractiveFlag.pinchZoom |
-                    InteractiveFlag.doubleTapZoom,
+                flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
               ),
             ),
             children: [
@@ -134,20 +139,30 @@ class _MapScreenState extends State<MapScreen>
                     'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.hydrasense',
               ),
+
               Consumer<RiskStateProvider>(
                 builder: (_, provider, __) {
-                  return Stack(
-                    children: provider.riskStates.map((state) {
-                      return FloodZonesLayer(
-                        center: state.center,
-                        currentRadius: state.currentRadius,
-                        predictedRadius: state.predictedRadius,
-                        color: getRiskColor(state.currentRisk),
-                      );
-                    }).toList(),
+                  return IgnorePointer(
+                    ignoring: true,
+                    child: Stack(
+                      children: provider.riskStates.map((state) {
+                        final bool isSelected =
+                            provider.selectedZone?.districtId == state.districtId;
+
+                        return FloodZonesLayer(
+                          center: state.center,
+                          currentRadius: state.currentRadius,
+                          predictedRadius: state.predictedRadius,
+                          color: getRiskColor(state.currentRisk),
+                          isSelected: isSelected,
+                        );
+                      }).toList(),
+                    ),
                   );
                 },
               ),
+
+              /// Invisible tap targets
               Consumer<RiskStateProvider>(
                 builder: (_, provider, __) {
                   return MarkerLayer(
@@ -157,14 +172,20 @@ class _MapScreenState extends State<MapScreen>
                         width: 60,
                         height: 60,
                         child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
                           onTap: () => _onFloodZoneTap(state),
-                          child: const SizedBox(),
+                          child: Container(
+                            width: 60,
+                            height: 60,
+                            color: Colors.transparent,
+                          ),
                         ),
                       );
                     }).toList(),
                   );
                 },
               ),
+
               if (_userLocation != null)
                 UserLocationMarker(
                   location: _userLocation!,
@@ -172,24 +193,7 @@ class _MapScreenState extends State<MapScreen>
                 ),
             ],
           ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: 120,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.6),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
+
           MapAppBar(
             onSearchTap: _openSearchDialog,
             onMyLocationTap: () {
@@ -198,6 +202,7 @@ class _MapScreenState extends State<MapScreen>
               }
             },
           ),
+
           Consumer<RiskStateProvider>(
             builder: (_, provider, __) {
               if (!_showRiskPanel || provider.riskStates.isEmpty) {
@@ -213,23 +218,10 @@ class _MapScreenState extends State<MapScreen>
                     : 'No immediate escalation predicted',
                 riskColor: getRiskColor(risk.currentRisk),
                 riskIcon: getRiskIcon(risk.currentRisk),
-                onClose: () {
-                  setState(() => _showRiskPanel = false);
-                },
+                onClose: () => setState(() => _showRiskPanel = false),
               );
             },
           ),
-          if (!_showRiskPanel)
-            Positioned(
-              bottom: 20,
-              right: 16,
-              child: FloatingActionButton(
-                onPressed: () {
-                  setState(() => _showRiskPanel = true);
-                },
-                child: const Icon(Icons.info_outline),
-              ),
-            ),
         ],
       ),
     );
