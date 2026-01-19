@@ -1,26 +1,23 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-
-enum RiskLevel {
-  low,
-  moderate,
-  high,
-}
+import 'package:latlong2/latlong.dart';
 
 class RiskState {
   final String districtId;
-  final double centerLat;
-  final double centerLng;
+
+  final LatLng center;
+
   final double currentRadius;
   final double? predictedRadius;
-  final RiskLevel currentRisk;
-  final RiskLevel? predictedRisk;
+
+  final String currentRisk;
+  final String? predictedRisk;
+
   final int? predictionWindow;
   final DateTime updatedAt;
 
   RiskState({
     required this.districtId,
-    required this.centerLat,
-    required this.centerLng,
+    required this.center,
     required this.currentRadius,
     required this.currentRisk,
     required this.updatedAt,
@@ -29,38 +26,27 @@ class RiskState {
     this.predictionWindow,
   });
 
-  factory RiskState.fromFirestore(
-    DocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
-    final data = doc.data()!;
+  factory RiskState.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
 
     return RiskState(
-      districtId: doc.id,
-      centerLat: (data['centerLat'] as num).toDouble(),
-      centerLng: (data['centerLng'] as num).toDouble(),
+      districtId: data['districtId'] as String,
+
+      center: LatLng(
+        (data['centerLat'] as num).toDouble(),
+        (data['centerLng'] as num).toDouble(),
+      ),
+
       currentRadius: (data['currentRadius'] as num).toDouble(),
       predictedRadius: data['predictedRadius'] != null
           ? (data['predictedRadius'] as num).toDouble()
           : null,
-      currentRisk: _parseRisk(data['currentRisk']),
-      predictedRisk: data['predictedRisk'] != null
-          ? _parseRisk(data['predictedRisk'])
-          : null,
-      predictionWindow: data['predictionWindow'],
+
+      currentRisk: data['currentRisk'] as String,
+      predictedRisk: data['predictedRisk'] as String?,
+
+      predictionWindow: data['predictionWindow'] as int?,
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
     );
-  }
-
-  static RiskLevel _parseRisk(String value) {
-    switch (value) {
-      case 'LOW':
-        return RiskLevel.low;
-      case 'MODERATE':
-        return RiskLevel.moderate;
-      case 'HIGH':
-        return RiskLevel.high;
-      default:
-        throw Exception('Unknown risk level: $value');
-    }
   }
 }

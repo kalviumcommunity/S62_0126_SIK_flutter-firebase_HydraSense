@@ -1,18 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'screens/landing_pager.dart';
+import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
+import 'screens/landing_pager.dart';
 import 'screens/home_screen.dart';
 import 'screens/splash_screen.dart';
+import 'services/firestore_service.dart';
+import 'state/risk_state_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => RiskStateProvider(FirestoreService()),
+        ),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -25,24 +38,21 @@ class MyApp extends StatelessWidget {
       title: 'HydraSense',
       home: SplashScreen(
         child: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          // ⏳ while Firebase checks stored session
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
+          stream: FirebaseAuth.instance.authStateChanges(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
 
-          // ✅ User already logged in
-          if (snapshot.hasData) {
-            return const HomeScreen();
-          }
+            if (snapshot.hasData) {
+              return const HomeScreen();
+            }
 
-          // ❌ User logged out
-          return const LandingPager();
-        },
-      ),
+            return const LandingPager();
+          },
+        ),
       ),
     );
   }

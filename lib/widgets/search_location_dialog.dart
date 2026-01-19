@@ -33,8 +33,6 @@ Future<Map<String, dynamic>?> showSearchLocationDialog(
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  /// 🔎 Search field
                   TextField(
                     controller: controller,
                     decoration: const InputDecoration(
@@ -42,23 +40,19 @@ Future<Map<String, dynamic>?> showSearchLocationDialog(
                       prefixIcon: Icon(Icons.search),
                     ),
                     onChanged: (value) {
-                      if (debounce?.isActive ?? false) debounce!.cancel();
-
-                      debounce =
-                          Timer(const Duration(milliseconds: 350), () async {
+                      debounce?.cancel();
+                      debounce = Timer(
+                          const Duration(milliseconds: 350), () async {
                         final result =
-                            await locationService.getPlaceSuggestions(value);
-
+                            await locationService.getPlaceSuggestions(
+                                value);
                         setState(() {
                           suggestions = result;
                         });
                       });
                     },
                   ),
-
                   const SizedBox(height: 12),
-
-                  /// 📋 Suggestions
                   if (suggestions.isNotEmpty)
                     SizedBox(
                       height: 180,
@@ -68,14 +62,15 @@ Future<Map<String, dynamic>?> showSearchLocationDialog(
                           final item = suggestions[index];
                           return ListTile(
                             dense: true,
-                            leading:
-                                const Icon(Icons.location_on_outlined),
+                            leading: const Icon(
+                                Icons.location_on_outlined),
                             title: Text(
                               item['display'],
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                             onTap: () {
+                              debounce?.cancel();
                               FocusScope.of(context).unfocus();
                               Navigator.pop(context, {
                                 'lat': item['lat'],
@@ -86,13 +81,14 @@ Future<Map<String, dynamic>?> showSearchLocationDialog(
                         },
                       ),
                     ),
-
                   if (suggestions.isEmpty)
                     const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 20),
+                      padding:
+                          EdgeInsets.symmetric(vertical: 20),
                       child: Text(
                         'Start typing to see suggestions',
-                        style: TextStyle(color: Colors.grey),
+                        style:
+                            TextStyle(color: Colors.grey),
                       ),
                     ),
                 ],
