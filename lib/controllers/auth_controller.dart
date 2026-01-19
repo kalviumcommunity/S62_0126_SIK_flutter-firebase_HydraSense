@@ -26,12 +26,17 @@ class AuthController {
       return false;
     }
 
-    // Firestore user creation (background)
-    _firestoreService.createUser(
-      user.uid,
-      email.trim(),
-    );
-
-    return true;
+    try {
+      // ✅ ensure Firestore user is created
+      await _firestoreService.createUser(
+        user.uid,
+        email.trim(),
+      );
+      return true;
+    } catch (e) {
+      // ❌ rollback auth if Firestore fails (important!)
+      await _authService.logout();
+      return false;
+    }
   }
 }

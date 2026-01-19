@@ -34,8 +34,8 @@ class FloodZonesLayer extends StatelessWidget {
             radius: predictedRadius!,
             useRadiusInMeter: true,
             color: color.withOpacity(0.15),
-            borderStrokeWidth: 1,
             borderColor: color.withOpacity(0.4),
+            borderStrokeWidth: 1,
           ),
       ],
     );

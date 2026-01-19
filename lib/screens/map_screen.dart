@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:geocoding/geocoding.dart';
+import 'package:provider/provider.dart';
+import 'package:sw2/models/risk_state.dart';
+
 import 'package:sw2/utils/risk_ui_utils.dart';
 import 'package:sw2/widgets/flood_zones_layer.dart';
 import 'package:sw2/widgets/map_app_bar.dart';
@@ -10,6 +12,7 @@ import 'package:sw2/widgets/risk_panel.dart';
 import 'package:sw2/widgets/search_location_dialog.dart';
 import 'package:sw2/widgets/user_location_marker.dart';
 
+import '../state/risk_state_provider.dart';
 import '../services/location_service.dart';
 
 class MapScreen extends StatefulWidget {
@@ -19,92 +22,99 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixin {
+class _MapScreenState extends State<MapScreen>
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   final MapController _mapController = MapController();
   late AnimationController _pulseController;
 
-  // 🔴 PHASE 2: Dummy current flood risk (Chennai)
-  final LatLng _floodCenter = LatLng(13.0827, 80.2707);
-  final double _currentFloodRadius = 5000;
-  final double _predictedFloodRadius = 8000;
-  final String _currentRiskLevel = 'HIGH';
-
-
-  // 🔵 User location
   LatLng? _userLocation;
   bool _hasMovedCamera = false;
   bool _showRiskPanel = true;
-  
+
   static final LatLng indiaCenter = LatLng(20.5937, 78.9629);
 
   @override
   void initState() {
     super.initState();
+
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat();
+
     _loadUserLocation();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<RiskStateProvider>().startListeningAll();
+    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pulseController.dispose();
     super.dispose();
   }
 
-  void _onFloodZoneTap() {
-    showRiskInfoSheet(
-      context: context,
-      districtName: 'Chennai District',
-      currentRisk: _currentRiskLevel,
-      predictedRisk:
-          _predictedFloodRadius != null ? _currentRiskLevel : null,
-      predictionWindow:
-          _predictedFloodRadius != null ? 'Next 6–12 hours' : null,
-      lastUpdated: DateTime.now(),
-    );
-  }
-  Future<void> _loadUserLocation() async {
-    final locationService = LocationService();
-    final position = await locationService.getCurrentLocation();
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final provider = context.read<RiskStateProvider>();
 
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      provider.pauseListening();
+    } else if (state == AppLifecycleState.resumed) {
+      provider.startListeningAll();
+    }
+  }
+
+  Future<void> _loadUserLocation() async {
+    final position = await LocationService().getCurrentLocation();
     if (position == null) return;
 
-    final userLatLng = LatLng(position.latitude, position.longitude);
+    final latLng = LatLng(position.latitude, position.longitude);
 
     setState(() {
-      _userLocation = userLatLng;
+      _userLocation = latLng;
     });
 
     if (!_hasMovedCamera) {
-      _mapController.move(userLatLng, 13);
+      _mapController.move(latLng, 13);
       _hasMovedCamera = true;
     }
   }
-  Future<void> _openSearchDialog() async {
-  final place = await showSearchLocationDialog(context);
 
-  if (place == null || place.trim().isEmpty) return;
-
-  try {
-    final locations = await locationFromAddress(place);
-    if (locations.isEmpty) return;
-
-    final latLng = LatLng(
-      locations.first.latitude,
-      locations.first.longitude,
+  void _onFloodZoneTap(RiskState state) {
+    showRiskInfoSheet(
+      context: context,
+      districtName: state.districtId,
+      currentRisk: state.currentRisk,
+      predictedRisk: state.predictedRisk,
+      predictionWindow: state.predictionWindow != null
+          ? '${state.predictionWindow} hours'
+          : null,
+      lastUpdated: state.updatedAt,
     );
+  }
 
-    _mapController.move(latLng, 12);
-  } catch (_) {}
-}
+  Future<void> _openSearchDialog() async {
+    final place = await showSearchLocationDialog(context);
+    if (place == null) return;
+
+    final double lat = place['lat'];
+    final double lon = place['lon'];
+
+    _mapController.move(
+      LatLng(lat, lon),
+      12,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          // Map Layer
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
@@ -120,39 +130,48 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate:
+                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.hydrasense',
               ),
-              FloodZonesLayer(
-                center: _floodCenter,
-                currentRadius: _currentFloodRadius,
-                predictedRadius: _predictedFloodRadius,
-                color: getRiskColor(_currentRiskLevel),
+              Consumer<RiskStateProvider>(
+                builder: (_, provider, __) {
+                  return Stack(
+                    children: provider.riskStates.map((state) {
+                      return FloodZonesLayer(
+                        center: state.center,
+                        currentRadius: state.currentRadius,
+                        predictedRadius: state.predictedRadius,
+                        color: getRiskColor(state.currentRisk),
+                      );
+                    }).toList(),
+                  );
+                },
               ),
-              MarkerLayer(
-                markers: [
-                  Marker(
-                    point: _floodCenter,
-                    width: 60,
-                    height: 60,
-                    child: GestureDetector(
-                      onTap: _onFloodZoneTap,
-                      child: Container(
-                        color: Colors.transparent,
-                      ),
-                    ),
-                  ),
-                ],
+              Consumer<RiskStateProvider>(
+                builder: (_, provider, __) {
+                  return MarkerLayer(
+                    markers: provider.riskStates.map((state) {
+                      return Marker(
+                        point: state.center,
+                        width: 60,
+                        height: 60,
+                        child: GestureDetector(
+                          onTap: () => _onFloodZoneTap(state),
+                          child: const SizedBox(),
+                        ),
+                      );
+                    }).toList(),
+                  );
+                },
               ),
-              // User location marker
               if (_userLocation != null)
                 UserLocationMarker(
                   location: _userLocation!,
                   pulseAnimation: _pulseController,
-              ),
+                ),
             ],
           ),
-          // Top Gradient Overlay
           Positioned(
             top: 0,
             left: 0,
@@ -179,28 +198,36 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               }
             },
           ),
-          if (_showRiskPanel)
-            RiskPanel(
-              riskLevel: _currentRiskLevel,
-              riskColor: getRiskColor(_currentRiskLevel),
-              riskIcon: getRiskIcon(_currentRiskLevel),
-              onClose: () {
-                setState(() => _showRiskPanel = false);
-              },
-            ),
-          // Floating Action Button - Toggle Risk Panel
+          Consumer<RiskStateProvider>(
+            builder: (_, provider, __) {
+              if (!_showRiskPanel || provider.riskStates.isEmpty) {
+                return const SizedBox();
+              }
+
+              final risk = provider.riskStates.first;
+
+              return RiskPanel(
+                title: 'Flood Risk: ${risk.currentRisk.toUpperCase()}',
+                subtitle: risk.predictedRisk != null
+                    ? 'Predicted to increase in ${risk.predictionWindow} hrs'
+                    : 'No immediate escalation predicted',
+                riskColor: getRiskColor(risk.currentRisk),
+                riskIcon: getRiskIcon(risk.currentRisk),
+                onClose: () {
+                  setState(() => _showRiskPanel = false);
+                },
+              );
+            },
+          ),
           if (!_showRiskPanel)
             Positioned(
               bottom: 20,
               right: 16,
               child: FloatingActionButton(
                 onPressed: () {
-                  setState(() {
-                    _showRiskPanel = true;
-                  });
+                  setState(() => _showRiskPanel = true);
                 },
-                backgroundColor: getRiskColor(_currentRiskLevel),
-                child: const Icon(Icons.info_outline, color: Colors.white),
+                child: const Icon(Icons.info_outline),
               ),
             ),
         ],

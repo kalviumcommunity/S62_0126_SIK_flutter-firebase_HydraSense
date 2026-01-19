@@ -3,9 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  AuthService() {
-    _auth.setPersistence(Persistence.LOCAL);
-  }
+  AuthService();
 
   Future<User?> signUp(String email, String password) async {
     try {
@@ -15,7 +13,7 @@ class AuthService {
       );
       return cred.user;
     } catch (e) {
-      print('SIGNUP ERROR: $e');
+      // print('SIGNUP ERROR: $e');
       return null;
     }
   }
@@ -28,7 +26,7 @@ class AuthService {
       );
       return cred.user;
     } catch (e) {
-      print('LOGIN ERROR: $e');
+      // print('LOGIN ERROR: $e');
       return null;
     }
   }
