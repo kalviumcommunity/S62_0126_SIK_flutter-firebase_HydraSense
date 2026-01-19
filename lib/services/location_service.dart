@@ -23,8 +23,6 @@ class LocationService {
       timeLimit: const Duration(seconds: 10),
     );
   }
-
-
   /// 📋 AUTOCOMPLETE suggestions (WORLDWIDE, MAX 3)
   Future<List<Map<String, dynamic>>> getPlaceSuggestions(String query) async {
     if (query.trim().length < 3) return [];
