@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
+import '../utils/rate_limiter.dart';
 
 class LocationService {
-  /// 📍 Current device location
+  final RateLimiter _searchLimiter =
+      RateLimiter(const Duration(seconds: 1));
+
   Future<Position?> getCurrentLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return null;
@@ -24,10 +27,10 @@ class LocationService {
     );
   }
 
-
-  /// 📋 AUTOCOMPLETE suggestions (WORLDWIDE, MAX 3)
-  Future<List<Map<String, dynamic>>> getPlaceSuggestions(String query) async {
+  Future<List<Map<String, dynamic>>> getPlaceSuggestions(
+      String query) async {
     if (query.trim().length < 3) return [];
+    if (!_searchLimiter.shouldAllow()) return [];
 
     final url = Uri.https(
       'nominatim.openstreetmap.org',
@@ -62,4 +65,3 @@ class LocationService {
     }
   }
 }
-                                                      

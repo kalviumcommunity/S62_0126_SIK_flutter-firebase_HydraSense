@@ -20,12 +20,15 @@ class RiskStateProvider extends ChangeNotifier {
   StreamSubscription<List<RiskState>>? _subscription;
   Timer? _retryTimer;
 
-  bool _started = false;
   int _retryDelay = 2;
+  bool _isListening = false;
 
   void startListeningAll() {
-    if (_started) return;
-    _started = true;
+    if (_isListening) return;
+
+    _isListening = true;
+    _isLoading = true;
+    notifyListeners();
 
     _subscription = _firestoreService.streamAllRiskStates().listen(
       (states) {
@@ -41,6 +44,11 @@ class RiskStateProvider extends ChangeNotifier {
       onError: (e) {
         _error = e.toString();
         _isLoading = false;
+
+        _subscription?.cancel();
+        _subscription = null;
+        _isListening = false;
+
         _scheduleRetry();
         notifyListeners();
       },
@@ -48,19 +56,23 @@ class RiskStateProvider extends ChangeNotifier {
   }
 
   void pauseListening() {
+    _retryTimer?.cancel();
+    _retryTimer = null;
+
     _subscription?.cancel();
     _subscription = null;
-    _retryTimer?.cancel();
-    _started = false;
+
+    _isListening = false;
   }
 
   void _scheduleRetry() {
-    _retryTimer?.cancel();
+    if (_retryTimer != null && _retryTimer!.isActive) return;
 
     _retryTimer = Timer(
       Duration(seconds: _retryDelay),
       () {
-        _started = false;
+        _retryTimer = null;
+        _isListening = false;
         startListeningAll();
         _retryDelay = (_retryDelay * 2).clamp(2, 60);
       },
@@ -77,8 +89,8 @@ class RiskStateProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _subscription?.cancel();
     _retryTimer?.cancel();
+    _subscription?.cancel();
     super.dispose();
   }
 }
