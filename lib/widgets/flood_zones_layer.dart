@@ -7,6 +7,7 @@ class FloodZonesLayer extends StatelessWidget {
   final double currentRadius;
   final double? predictedRadius;
   final Color color;
+  final bool isSelected;
 
   const FloodZonesLayer({
     super.key,
@@ -14,7 +15,9 @@ class FloodZonesLayer extends StatelessWidget {
     required this.currentRadius,
     required this.predictedRadius,
     required this.color,
+    required this.isSelected,
   });
+
 
   @override
   Widget build(BuildContext context) {
@@ -24,16 +27,16 @@ class FloodZonesLayer extends StatelessWidget {
           point: center,
           radius: currentRadius,
           useRadiusInMeter: true,
-          color: color.withOpacity(0.25),
+          color: color.withOpacity(isSelected ? 0.35 : 0.25),
           borderColor: color,
-          borderStrokeWidth: 2,
+          borderStrokeWidth: isSelected ? 3 : 2,
         ),
         if (predictedRadius != null && predictedRadius! > currentRadius)
           CircleMarker(
             point: center,
             radius: predictedRadius!,
             useRadiusInMeter: true,
-            color: color.withOpacity(0.15),
+            color: color.withOpacity(isSelected ? 0.2 : 0.15),
             borderColor: color.withOpacity(0.4),
             borderStrokeWidth: 1,
           ),
