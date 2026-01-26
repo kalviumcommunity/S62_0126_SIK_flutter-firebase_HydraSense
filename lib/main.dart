@@ -7,8 +7,9 @@ import 'firebase_options.dart';
 import 'screens/landing_pager.dart';
 import 'screens/home_screen.dart';
 import 'screens/splash_screen.dart';
-import 'services/firestore_service.dart';
 import 'state/risk_state_provider.dart';
+import 'services/risk_firestore_service.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,7 +21,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) => RiskStateProvider(FirestoreService()),
+          create: (_) => RiskStateProvider(RiskFirestoreService()),
         ),
       ],
       child: const MyApp(),

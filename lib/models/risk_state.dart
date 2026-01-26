@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:latlong2/latlong.dart';
 
 class RiskState {
   final String districtId;
 
-  final LatLng center;
+  final double centerLat;
+  final double centerLng;
 
   final double currentRadius;
   final double? predictedRadius;
@@ -17,13 +17,14 @@ class RiskState {
 
   RiskState({
     required this.districtId,
-    required this.center,
+    required this.centerLat,
+    required this.centerLng,
     required this.currentRadius,
-    required this.currentRisk,
-    required this.updatedAt,
     this.predictedRadius,
+    required this.currentRisk,
     this.predictedRisk,
     this.predictionWindow,
+    required this.updatedAt,
   });
 
   factory RiskState.fromFirestore(DocumentSnapshot doc) {
@@ -32,10 +33,8 @@ class RiskState {
     return RiskState(
       districtId: data['districtId'] as String,
 
-      center: LatLng(
-        (data['centerLat'] as num).toDouble(),
-        (data['centerLng'] as num).toDouble(),
-      ),
+      centerLat: (data['centerLat'] as num).toDouble(),
+      centerLng: (data['centerLng'] as num).toDouble(),
 
       currentRadius: (data['currentRadius'] as num).toDouble(),
       predictedRadius: data['predictedRadius'] != null

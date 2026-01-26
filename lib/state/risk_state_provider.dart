@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/risk_state.dart';
-import '../services/firestore_service.dart';
+import '../services/risk_firestore_service.dart';
 
 class RiskStateProvider extends ChangeNotifier {
-  final FirestoreService _firestoreService;
+  final RiskFirestoreService _firestoreService;
   RiskState? _selectedZone;
   RiskState? get selectedZone => _selectedZone;
 
@@ -39,7 +39,7 @@ class RiskStateProvider extends ChangeNotifier {
     if (_isListening) return;
 
     _isListening = true;
-    _isLoading = true;
+    _isLoading = _riskStates.isEmpty;
     notifyListeners();
 
     _subscription = _firestoreService.streamAllRiskStates().listen(

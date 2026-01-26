@@ -67,13 +67,14 @@ class HomeScreen extends StatelessWidget {
 
                         if (!context.mounted) return;
 
-                        Navigator.pushAndRemoveUntil(
+                       Navigator.of(context).popUntil((route) => route.isFirst);
+                        Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
                             builder: (_) => const WelcomeScreen(),
                           ),
-                          (_) => false,
-                        );
+                      );
+
                       },
                       child: Container(
                         padding: const EdgeInsets.all(10),

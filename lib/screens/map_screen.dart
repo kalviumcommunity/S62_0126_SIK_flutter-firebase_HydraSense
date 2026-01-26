@@ -58,16 +58,19 @@ class _MapScreenState extends State<MapScreen>
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    final provider = context.read<RiskStateProvider>();
+    void didChangeAppLifecycleState(AppLifecycleState state) {
+      final provider = context.read<RiskStateProvider>();
 
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
-      provider.pauseListening();
-    } else if (state == AppLifecycleState.resumed) {
-      provider.startListeningAll();
+      if (state == AppLifecycleState.paused ||
+          state == AppLifecycleState.inactive) {
+        provider.pauseListening();
+        _pulseController.stop();
+      } else if (state == AppLifecycleState.resumed) {
+        provider.startListeningAll();
+        _pulseController.repeat();
+      }
     }
-  }
+
 
   Future<void> _loadUserLocation() async {
     final position = await LocationService().getCurrentLocation();
@@ -88,8 +91,10 @@ class _MapScreenState extends State<MapScreen>
 
     provider.selectZone(state);
 
+    final center = LatLng(state.centerLat, state.centerLng);
+
     _mapController.move(
-      state.center,
+      center,
       _mapController.camera.zoom < 10 ? 10 : _mapController.camera.zoom,
     );
 
@@ -104,7 +109,6 @@ class _MapScreenState extends State<MapScreen>
       lastUpdated: state.updatedAt,
     );
   }
-
 
   Future<void> _openSearchDialog() async {
     final place = await showSearchLocationDialog(context);
@@ -147,10 +151,14 @@ class _MapScreenState extends State<MapScreen>
                     child: Stack(
                       children: provider.riskStates.map((state) {
                         final bool isSelected =
-                            provider.selectedZone?.districtId == state.districtId;
+                            provider.selectedZone?.districtId ==
+                                state.districtId;
+
+                        final center =
+                            LatLng(state.centerLat, state.centerLng);
 
                         return FloodZonesLayer(
-                          center: state.center,
+                          center: center,
                           currentRadius: state.currentRadius,
                           predictedRadius: state.predictedRadius,
                           color: getRiskColor(state.currentRisk),
@@ -162,13 +170,15 @@ class _MapScreenState extends State<MapScreen>
                 },
               ),
 
-              /// Invisible tap targets
               Consumer<RiskStateProvider>(
                 builder: (_, provider, __) {
                   return MarkerLayer(
                     markers: provider.riskStates.map((state) {
+                      final center =
+                          LatLng(state.centerLat, state.centerLng);
+
                       return Marker(
-                        point: state.center,
+                        point: center,
                         width: 60,
                         height: 60,
                         child: GestureDetector(
