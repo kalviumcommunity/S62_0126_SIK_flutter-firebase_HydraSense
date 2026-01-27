@@ -13,6 +13,9 @@ class RiskState {
   final String? predictedRisk;
 
   final int? predictionWindow;
+  final double? confidence;
+  final DateTime? predictionExpiresAt;
+
   final DateTime updatedAt;
 
   RiskState({
@@ -24,6 +27,8 @@ class RiskState {
     required this.currentRisk,
     this.predictedRisk,
     this.predictionWindow,
+    this.confidence,
+    this.predictionExpiresAt,
     required this.updatedAt,
   });
 
@@ -45,6 +50,14 @@ class RiskState {
       predictedRisk: data['predictedRisk'] as String?,
 
       predictionWindow: data['predictionWindow'] as int?,
+      confidence: data['confidence'] != null
+          ? (data['confidence'] as num).toDouble()
+          : null,
+
+      predictionExpiresAt: data['predictionExpiresAt'] != null
+          ? (data['predictionExpiresAt'] as Timestamp).toDate()
+          : null,
+
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
     );
   }

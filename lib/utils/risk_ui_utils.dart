@@ -25,3 +25,20 @@ IconData getRiskIcon(String riskLevel) {
       return Icons.info;
   }
 }
+
+String getRiskExplanation(String riskLevel) {
+  switch (riskLevel) {
+    case 'LOW':
+      return 'No active flooding detected. Conditions are stable.';
+    case 'MODERATE':
+      return 'Flooding is possible in low-lying areas. Stay alert.';
+    case 'HIGH':
+      return 'Severe flood conditions detected. Avoid affected areas.';
+    default:
+      return 'Risk level cannot be determined at this time.';
+  }
+}
+
+String getPredictionExplanation() {
+  return 'This is a projection based on forecast rain. It may change as conditions update.';
+}

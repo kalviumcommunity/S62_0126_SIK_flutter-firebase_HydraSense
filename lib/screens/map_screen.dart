@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -7,15 +8,18 @@ import '../models/risk_state.dart';
 import '../state/risk_state_provider.dart';
 import '../services/location_service.dart';
 import '../services/safety_service.dart';
-import '../widgets/safety_widgets.dart';
 
-import '../utils/risk_ui_utils.dart';
+import '../widgets/safety_widgets.dart';
 import '../widgets/flood_zones_layer.dart';
 import '../widgets/map_app_bar.dart';
 import '../widgets/risk_info_sheet.dart';
 import '../widgets/risk_panel.dart';
 import '../widgets/search_location_dialog.dart';
 import '../widgets/user_location_marker.dart';
+import '../widgets/prediction_warning_banner.dart';
+
+import '../utils/risk_ui_utils.dart';
+import '../utils/distance_utils.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -120,15 +124,7 @@ class _MapScreenState extends State<MapScreen>
       _mapController.camera.zoom < 10 ? 10 : _mapController.camera.zoom,
     );
 
-    showRiskInfoSheet(
-      context: context,
-      districtName: state.districtId,
-      currentRisk: state.currentRisk,
-      predictedRisk: state.predictedRisk,
-      predictionWindow:
-          state.predictionWindow != null ? '${state.predictionWindow} hours' : null,
-      lastUpdated: state.updatedAt,
-    );
+    showRiskInfoSheet(context: context, state: state);
   }
 
   Future<void> _openSearchDialog() async {
@@ -147,19 +143,96 @@ class _MapScreenState extends State<MapScreen>
     }
   }
 
+  /// 🔔 PHASE 8: Prediction-aware contextual banner logic
+  RiskState? _getRelevantPrediction(List<RiskState> states) {
+    if (_userLocation == null) return null;
+
+    final now = DateTime.now();
+
+    for (final state in states) {
+      if (state.predictedRadius == null) continue;
+      if (state.predictionExpiresAt == null) continue;
+      if (now.isAfter(state.predictionExpiresAt!)) continue;
+
+      final center = LatLng(state.centerLat, state.centerLng);
+      final d = distanceMeters(_userLocation!, center);
+
+      if (d < state.predictedRadius!) {
+        return state;
+      }
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
           _buildMap(),
+
           MapAppBar(
             onSearchTap: _openSearchDialog,
             onMyLocationTap: _goToMyLocation,
           ),
+
+          /// 🔔 Prediction-aware banner (only when relevant)
+          Consumer<RiskStateProvider>(
+            builder: (_, provider, __) {
+              final prediction =
+                  _getRelevantPrediction(provider.riskStates);
+
+              if (prediction == null) return const SizedBox();
+
+              return PredictionWarningBanner(
+                message:
+                    'Possible flood expansion near you in '
+                    '${prediction.predictionWindow} hours',
+                onTap: () {
+                  _mapController.move(
+                    LatLng(
+                      prediction.centerLat,
+                      prediction.centerLng,
+                    ),
+                    12,
+                  );
+                },
+              );
+            },
+          ),
+
           _buildRiskPanel(),
+
           if (_safetyResult.isInDanger) _buildSafetyAlert(),
+
           _buildSafetyStatus(),
+
+          /// 📴 PHASE 9: Last-updated indicator (offline-safe)
+          Consumer<RiskStateProvider>(
+            builder: (_, provider, __) {
+              if (provider.riskStates.isEmpty) {
+                return const SizedBox();
+              }
+
+              final lastUpdated = provider.riskStates
+                  .map((e) => e.updatedAt)
+                  .reduce((a, b) => a.isAfter(b) ? a : b);
+
+              return Positioned(
+                bottom: 4,
+                right: 8,
+                child: Text(
+                  'Last updated '
+                  '${lastUpdated.hour.toString().padLeft(2, '0')}:'
+                  '${lastUpdated.minute.toString().padLeft(2, '0')}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -233,10 +306,7 @@ class _MapScreenState extends State<MapScreen>
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () => _onFloodZoneTap(state),
-                child: const SizedBox(
-                  width: 60,
-                  height: 60,
-                ),
+                child: const SizedBox(width: 60, height: 60),
               ),
             );
           }).toList(),
@@ -288,7 +358,9 @@ class _MapScreenState extends State<MapScreen>
       bottom: _safetyResult.isInDanger ? 88 : 16,
       left: 16,
       right: 16,
-      child: SafetyStatusIndicator(safetyResult: _safetyResult),
+      child: SafetyStatusIndicator(
+        safetyResult: _safetyResult,
+      ),
     );
   }
 }
