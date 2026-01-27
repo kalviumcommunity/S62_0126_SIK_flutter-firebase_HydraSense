@@ -28,9 +28,21 @@ async function fetchRainfall(lat, lon) {
     if (prob[i] > maxRainProb) maxRainProb = prob[i];
   }
 
+  let forecastRain6h = 0;
+  let forecastRain12h = 0;
+  let forecastRain24h = 0;
+
+  for (let i = 24; i < 30 && i < rain.length; i++) forecastRain6h += rain[i] || 0;
+  for (let i = 24; i < 36 && i < rain.length; i++) forecastRain12h += rain[i] || 0;
+  for (let i = 24; i < 48 && i < rain.length; i++) forecastRain24h += rain[i] || 0;
+
+
   return {
     rainfallLast24h,
     maxRainProb,
+    forecastRain6h,
+    forecastRain12h,
+    forecastRain24h
   };
 }
 

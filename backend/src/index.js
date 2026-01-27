@@ -9,6 +9,7 @@ const cron = require('node-cron');
 const { fetchRainfall } = require('./weather');
 const { fetchRiverDischarge } = require('./river');
 const { computeFloodStatus } = require('./floodLogic');
+const { computePrediction } = require('./predictionLogic');
 const {
   writeFloodStatus,
   writeFloodGeometry,
@@ -30,7 +31,6 @@ app.get('/', (req, res) => {
 app.use(express.json());
 app.use('/api', require('./api/userSafety'));
 
-
 async function runFloodUpdateForDistrict(district) {
   try {
     const weather = await fetchRainfall(district.lat, district.lon);
@@ -39,6 +39,15 @@ async function runFloodUpdateForDistrict(district) {
     const floodStatus = computeFloodStatus({
       ...weather,
       ...river,
+    });
+
+    const prediction = computePrediction({
+      currentRadius: floodStatus.currentRadius,
+      currentRisk: floodStatus.currentRisk,
+      confidence: floodStatus.confidence,
+      forecastRain6h: weather.forecastRain6h,
+      forecastRain12h: weather.forecastRain12h,
+      forecastRain24h: weather.forecastRain24h,
     });
 
     const polygon = createFloodPolygon(
@@ -53,48 +62,45 @@ async function runFloodUpdateForDistrict(district) {
       floodStatus.currentRadius
     );
 
-    console.log(`${district.name} flood status:`, floodStatus.currentRisk);
+    console.log(
+      `${district.name}: ${floodStatus.currentRisk}` +
+      (prediction ? ` → ${prediction.predictedRisk} (${prediction.predictionWindow}h)` : '')
+    );
 
-    // Write analytics
     await writeFloodStatus(floodStatus, district.id);
-    
-    // Write geometry
-    await writeFloodGeometry({
-      polygon,
-      bbox,
-      risk: floodStatus.currentRisk,
-      confidence: floodStatus.confidence,
-    }, district.id);
 
-    // 🔴 Frontend bridge - THIS IS WHAT YOUR APP READS
+    await writeFloodGeometry(
+      {
+        polygon,
+        bbox,
+        risk: floodStatus.currentRisk,
+        confidence: floodStatus.confidence,
+      },
+      district.id
+    );
+
     await writeRiskState(district.id, {
       centerLat: district.lat,
       centerLng: district.lon,
       currentRadius: floodStatus.currentRadius,
       currentRisk: floodStatus.currentRisk,
+      confidence: floodStatus.confidence,
+      prediction,
     });
-    
+
   } catch (err) {
     console.error(`Flood update failed for ${district.name}:`, err.message);
   }
 }
 
 async function runAllDistricts() {
-  console.log(`Updating ${DISTRICTS.length} districts...`);
-  
-  // Process districts sequentially to avoid API rate limits
   for (const district of DISTRICTS) {
     await runFloodUpdateForDistrict(district);
-    await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
-  
-  console.log('All districts updated');
 }
 
-// Run once at startup
 runAllDistricts();
-
-// Every 30 minutes
 cron.schedule('*/30 * * * *', runAllDistricts);
 
 app.listen(PORT, () => {
