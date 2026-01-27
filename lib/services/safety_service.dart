@@ -72,7 +72,7 @@ class SafetyCheckResult {
 }
 
 class SafetyService {
-  static const String _baseUrl = 'http://10.90.154.146:3000/api';
+  static const String _baseUrl = 'https://s62-0126-sik-flutter-firebase-hydrasense.onrender.com/api';
 
   static Future<SafetyCheckResult> checkUserSafety(
     LatLng? location,

@@ -1,22 +1,31 @@
 const admin = require('firebase-admin');
 
+let serviceAccount;
+
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  // ✅ Render / production
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} else {
+  // ✅ Local development only
+  serviceAccount = require('../serviceAccountKey.json');
+}
+
 if (!admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-    projectId: process.env.FIREBASE_PROJECT_ID,
+    credential: admin.credential.cert(serviceAccount),
   });
 }
 
 const db = admin.firestore();
 
-async function writeFloodStatus(data, districtId) {  // Added districtId
+async function writeFloodStatus(data, districtId) {
   await db.collection('flood_status').doc(districtId).set({
     ...data,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 }
 
-async function writeFloodGeometry(geometry, districtId) {  // Added districtId
+async function writeFloodGeometry(geometry, districtId) {
   await db.collection('flood_geometry').doc(districtId).set({
     ...geometry,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -25,7 +34,7 @@ async function writeFloodGeometry(geometry, districtId) {  // Added districtId
 
 async function writeRiskState(districtId, data) {
   await db.collection('risk_states').doc(districtId).set({
-    districtId: districtId,  // Make sure this is set
+    districtId,
 
     centerLat: data.centerLat,
     centerLng: data.centerLng,
