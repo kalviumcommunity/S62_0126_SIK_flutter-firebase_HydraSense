@@ -18,23 +18,23 @@ const {
   createFloodPolygon,
   computeBoundingBox,
 } = require('./geometry');
+const DISTRICTS = require('./districts');
 
 const app = express();
 const PORT = 3000;
 
-// Fixed center for Phase 6
-const CENTER_LAT = 13.0827;
-const CENTER_LON = 80.2707;
-const DISTRICT_ID = 'chennai';
-
 app.get('/', (req, res) => {
-  res.send('HydraSense backend running');
+  res.send('HydraSense backend - Monitoring ' + DISTRICTS.length + ' districts');
 });
 
-async function runFloodUpdate() {
+app.use(express.json());
+app.use('/api', require('./api/userSafety'));
+
+
+async function runFloodUpdateForDistrict(district) {
   try {
-    const weather = await fetchRainfall(CENTER_LAT, CENTER_LON);
-    const river = await fetchRiverDischarge(CENTER_LAT, CENTER_LON);
+    const weather = await fetchRainfall(district.lat, district.lon);
+    const river = await fetchRiverDischarge(district.lat, district.lon);
 
     const floodStatus = computeFloodStatus({
       ...weather,
@@ -42,47 +42,60 @@ async function runFloodUpdate() {
     });
 
     const polygon = createFloodPolygon(
-      CENTER_LAT,
-      CENTER_LON,
+      district.lat,
+      district.lon,
       floodStatus.currentRadius
     );
 
     const bbox = computeBoundingBox(
-      CENTER_LAT,
-      CENTER_LON,
+      district.lat,
+      district.lon,
       floodStatus.currentRadius
     );
 
-    console.log('Flood status:', floodStatus);
+    console.log(`${district.name} flood status:`, floodStatus.currentRisk);
 
-    // Phase 5 (debug / analytics)
-    await writeFloodStatus(floodStatus);
-
-    // Phase 6 geometry (Firestore-safe)
+    // Write analytics
+    await writeFloodStatus(floodStatus, district.id);
+    
+    // Write geometry
     await writeFloodGeometry({
       polygon,
       bbox,
       risk: floodStatus.currentRisk,
       confidence: floodStatus.confidence,
-    });
+    }, district.id);
 
-    // 🔴 Frontend bridge (existing Flutter code)
-    await writeRiskState(DISTRICT_ID, {
-      centerLat: CENTER_LAT,
-      centerLng: CENTER_LON,
-      currentRadius: floodStatus.currentRadius, // km → meters inside
+    // 🔴 Frontend bridge - THIS IS WHAT YOUR APP READS
+    await writeRiskState(district.id, {
+      centerLat: district.lat,
+      centerLng: district.lon,
+      currentRadius: floodStatus.currentRadius,
       currentRisk: floodStatus.currentRisk,
     });
+    
   } catch (err) {
-    console.error('Flood update failed:', err.message);
+    console.error(`Flood update failed for ${district.name}:`, err.message);
   }
 }
 
+async function runAllDistricts() {
+  console.log(`Updating ${DISTRICTS.length} districts...`);
+  
+  // Process districts sequentially to avoid API rate limits
+  for (const district of DISTRICTS) {
+    await runFloodUpdateForDistrict(district);
+    await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+  }
+  
+  console.log('All districts updated');
+}
+
 // Run once at startup
-runFloodUpdate();
+runAllDistricts();
 
 // Every 30 minutes
-cron.schedule('*/30 * * * *', runFloodUpdate);
+cron.schedule('*/30 * * * *', runAllDistricts);
 
 app.listen(PORT, () => {
   console.log(`Backend listening on port ${PORT}`);

@@ -8,23 +8,47 @@ class LocationService {
       RateLimiter(const Duration(seconds: 1));
 
   Future<Position?> getCurrentLocation() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return null;
+    try {
+      // 1️⃣ Check if location services are enabled
+      final serviceEnabled =
+          await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        print('❌ Location services disabled');
+        return null;
+      }
 
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
+      // 2️⃣ Check & request permission
+      LocationPermission permission =
+          await Geolocator.checkPermission();
 
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        print('❌ Location permission denied');
+        return null;
+      }
+
+      // 3️⃣ Try last known position (FAST, reliable)
+      final lastKnown =
+          await Geolocator.getLastKnownPosition();
+
+      if (lastKnown != null) {
+        print('📍 Using last known location');
+        return lastKnown;
+      }
+
+      // 4️⃣ Fallback: request current position (NO timeout)
+      print('📡 Requesting current GPS fix...');
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium,
+      );
+    } catch (e) {
+      print('❌ Location error: $e');
       return null;
     }
-
-    return await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.medium,
-      timeLimit: const Duration(seconds: 10),
-    );
   }
 
   Future<List<Map<String, dynamic>>> getPlaceSuggestions(
