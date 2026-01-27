@@ -1,0 +1,13 @@
+const DISTRICTS = [
+    { id: 'chennai', name: 'Chennai', state: 'Tamil Nadu', lat: 13.0827, lon: 80.2707 },
+    { id: 'mumbai', name: 'Mumbai', state: 'Maharashtra', lat: 19.0760, lon: 72.8777 },
+    { id: 'kolkata', name: 'Kolkata', state: 'West Bengal', lat: 22.5726, lon: 88.3639 },
+    { id: 'bangalore', name: 'Bangalore', state: 'Karnataka', lat: 12.9716, lon: 77.5946 },
+    { id: 'delhi', name: 'Delhi', state: 'Delhi', lat: 28.7041, lon: 77.1025 },
+    { id: 'hyderabad', name: 'Hyderabad', state: 'Telangana', lat: 17.3850, lon: 78.4867 },
+    { id: 'ahmedabad', name: 'Ahmedabad', state: 'Gujarat', lat: 23.0225, lon: 72.5714 },
+    { id: 'pune', name: 'Pune', state: 'Maharashtra', lat: 18.5204, lon: 73.8567 },
+    { id: 'jaipur', name: 'Jaipur', state: 'Rajasthan', lat: 26.9124, lon: 75.7873 },
+    { id: 'lucknow', name: 'Lucknow', state: 'Uttar Pradesh', lat: 26.8467, lon: 80.9462 }
+];
+module.exports = DISTRICTS;

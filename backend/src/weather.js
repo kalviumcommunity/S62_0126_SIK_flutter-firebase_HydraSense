@@ -1,9 +1,11 @@
 const axios = require('axios');
+const { httpsAgent } = require('./httpAgent');
 
 const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast';
 
 async function fetchRainfall(lat, lon) {
   const res = await axios.get(OPEN_METEO_URL, {
+    httpsAgent, // 🔴 FIX
     params: {
       latitude: lat,
       longitude: lon,
@@ -27,8 +29,8 @@ async function fetchRainfall(lat, lon) {
   }
 
   return {
-    rainfallLast24h, // mm
-    maxRainProb,     // %
+    rainfallLast24h,
+    maxRainProb,
   };
 }
 

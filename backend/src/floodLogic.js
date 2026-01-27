@@ -74,4 +74,39 @@ function computeFloodStatus({
   };
 }
 
-module.exports = { computeFloodStatus };
+function computePrediction(floodStatus, forecastRainfall = 0) {
+  const { currentRisk, rainfallLast24h, maxRainProb, riverDischarge } = floodStatus;
+  
+  // Simple prediction: if heavy rain forecasted and river is high
+  const willWorsen = forecastRainfall > 30 || maxRainProb > 80;
+  
+  if (!willWorsen) {
+    return {
+      predictedRisk: null,
+      predictedRadius: null,
+      predictionWindow: null,
+    };
+  }
+
+  let predictedRisk = currentRisk;
+  if (currentRisk === 'LOW' && (forecastRainfall > 50 || maxRainProb > 90)) {
+    predictedRisk = 'MODERATE';
+  } else if (currentRisk === 'MODERATE' && forecastRainfall > 70) {
+    predictedRisk = 'HIGH';
+  }
+
+  // Increase radius by 30% if prediction is worse
+  const predictedRadius = floodStatus.currentRadius * (predictedRisk === 'HIGH' ? 1.3 : 1.15);
+
+  return {
+    predictedRisk,
+    predictedRadius,
+    predictionWindow: 6, // hours
+  };
+}
+
+module.exports = { 
+  computeFloodStatus, 
+  computePrediction
+};
+

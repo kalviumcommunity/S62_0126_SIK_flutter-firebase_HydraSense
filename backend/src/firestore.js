@@ -9,15 +9,15 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-async function writeFloodStatus(data) {
-  await db.collection('flood_status').doc('chennai').set({
+async function writeFloodStatus(data, districtId) {  // Added districtId
+  await db.collection('flood_status').doc(districtId).set({
     ...data,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 }
 
-async function writeFloodGeometry(geometry) {
-  await db.collection('flood_geometry').doc('chennai').set({
+async function writeFloodGeometry(geometry, districtId) {  // Added districtId
+  await db.collection('flood_geometry').doc(districtId).set({
     ...geometry,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
@@ -25,7 +25,7 @@ async function writeFloodGeometry(geometry) {
 
 async function writeRiskState(districtId, data) {
   await db.collection('risk_states').doc(districtId).set({
-    districtId,
+    districtId: districtId,  // Make sure this is set
 
     centerLat: data.centerLat,
     centerLng: data.centerLng,
@@ -41,9 +41,8 @@ async function writeRiskState(districtId, data) {
   });
 }
 
-
 module.exports = {
   writeFloodStatus,
   writeFloodGeometry,
-    writeRiskState,
+  writeRiskState,
 };

@@ -1,0 +1,106 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
+
+enum SafetyStatus {
+  safe,
+  moderate,
+  inDangerZone,
+  locationDisabled,
+  unknown,
+}
+
+class SafetyCheckResult {
+  final bool isInDanger;
+  final SafetyStatus status;
+  final String message;
+  final double confidence;
+  final String? userDistrict;
+  final String? userRisk;
+
+  SafetyCheckResult({
+    required this.isInDanger,
+    required this.status,
+    required this.message,
+    this.confidence = 0,
+    this.userDistrict,
+    this.userRisk,
+  });
+
+  factory SafetyCheckResult.fromJson(Map<String, dynamic> json) {
+    final statusStr = (json['status'] as String?)?.toUpperCase() ?? 'UNKNOWN';
+
+    SafetyStatus status = SafetyStatus.unknown;
+    String? userRisk;
+
+    if (statusStr == 'SAFE') {
+      status = SafetyStatus.safe;
+      userRisk = 'LOW';
+    } else if (statusStr == 'MODERATE') {
+      status = SafetyStatus.moderate;
+      userRisk = 'MODERATE';
+    } else if (statusStr == 'DANGER') {
+      status = SafetyStatus.inDangerZone;
+      userRisk = 'HIGH';
+    }
+
+    return SafetyCheckResult(
+      isInDanger: status == SafetyStatus.inDangerZone,
+      status: status,
+      message: json['message'] ?? 'Safety status unavailable',
+      confidence: (json['confidence'] ?? 0).toDouble(),
+      userDistrict: json['nearestDistrict'],
+      userRisk: userRisk,
+    );
+  }
+
+  factory SafetyCheckResult.locationUnavailable() {
+    return SafetyCheckResult(
+      isInDanger: false,
+      status: SafetyStatus.locationDisabled,
+      message: 'Enable location to check safety in your area',
+    );
+  }
+
+  factory SafetyCheckResult.unknownError() {
+    return SafetyCheckResult(
+      isInDanger: false,
+      status: SafetyStatus.unknown,
+      message: 'Unable to check safety right now',
+    );
+  }
+}
+
+class SafetyService {
+  static const String _baseUrl = 'http://10.90.154.146:3000/api';
+
+  static Future<SafetyCheckResult> checkUserSafety(
+    LatLng? location,
+    List<dynamic> _ignored,
+  ) async {
+    if (location == null) {
+      return SafetyCheckResult.locationUnavailable();
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/check-user-safety'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'lat': location.latitude,
+          'lng': location.longitude,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Backend error ${response.statusCode}');
+      }
+
+      final data = jsonDecode(response.body);
+      return SafetyCheckResult.fromJson(data);
+    } catch (e) {
+      print('❌ Safety check failed: $e');
+      return SafetyCheckResult.unknownError();
+    }
+  }
+}

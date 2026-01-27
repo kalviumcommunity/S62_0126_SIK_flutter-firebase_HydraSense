@@ -1,9 +1,11 @@
 const axios = require('axios');
+const { httpsAgent } = require('./httpAgent');
 
 const FLOOD_API_URL = 'https://flood-api.open-meteo.com/v1/flood';
 
 async function fetchRiverDischarge(lat, lon) {
   const res = await axios.get(FLOOD_API_URL, {
+    httpsAgent, // 🔴 FIX
     params: {
       latitude: lat,
       longitude: lon,
@@ -16,7 +18,7 @@ async function fetchRiverDischarge(lat, lon) {
     res.data.daily?.river_discharge?.[0] ?? 0;
 
   return {
-    riverDischarge, // m³/s
+    riverDischarge,
   };
 }
 
