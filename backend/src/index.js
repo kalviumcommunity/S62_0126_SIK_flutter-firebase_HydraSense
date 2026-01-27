@@ -19,20 +19,23 @@ const {
   createFloodPolygon,
   computeBoundingBox,
 } = require('./geometry');
+const { applyStructuralRisk } = require('./structuralRisk');
 const DISTRICTS = require('./districts');
 
 const app = express();
 const PORT = 3000;
 
-app.get('/', (req, res) => {
-  res.send('HydraSense backend - Monitoring ' + DISTRICTS.length + ' districts');
-});
-
 app.use(express.json());
 app.use('/api', require('./api/userSafety'));
 
+app.get('/', (req, res) => {
+  res.send(`HydraSense backend — monitoring ${DISTRICTS.length} districts`);
+});
+
 async function runFloodUpdateForDistrict(district) {
   try {
+    console.log('📍 DISTRICT:', district.name);
+
     const weather = await fetchRainfall(district.lat, district.lon);
     const river = await fetchRiverDischarge(district.lat, district.lon);
 
@@ -40,6 +43,13 @@ async function runFloodUpdateForDistrict(district) {
       ...weather,
       ...river,
     });
+
+    // Structural (post-event) bias
+    floodStatus.currentRisk = applyStructuralRisk(
+      floodStatus.currentRisk,
+      district.id
+    );
+
 
     const prediction = computePrediction({
       currentRadius: floodStatus.currentRadius,
@@ -62,20 +72,9 @@ async function runFloodUpdateForDistrict(district) {
       floodStatus.currentRadius
     );
 
-    console.log(
-      `${district.name}: ${floodStatus.currentRisk}` +
-      (prediction ? ` → ${prediction.predictedRisk} (${prediction.predictionWindow}h)` : '')
-    );
-
     await writeFloodStatus(floodStatus, district.id);
-
     await writeFloodGeometry(
-      {
-        polygon,
-        bbox,
-        risk: floodStatus.currentRisk,
-        confidence: floodStatus.confidence,
-      },
+      { polygon, bbox, risk: floodStatus.currentRisk, confidence: floodStatus.confidence },
       district.id
     );
 
@@ -89,14 +88,14 @@ async function runFloodUpdateForDistrict(district) {
     });
 
   } catch (err) {
-    console.error(`Flood update failed for ${district.name}:`, err.message);
+    console.error(`❌ Flood update failed for ${district.name}:`, err.message);
   }
 }
 
 async function runAllDistricts() {
   for (const district of DISTRICTS) {
     await runFloodUpdateForDistrict(district);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(r => setTimeout(r, 1000));
   }
 }
 

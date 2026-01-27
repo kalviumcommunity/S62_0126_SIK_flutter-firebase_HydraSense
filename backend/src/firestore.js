@@ -16,14 +16,12 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-
 async function writeFloodStatus(data, districtId) {
   await db.collection('flood_status').doc(districtId).set({
     ...data,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 }
-
 
 async function writeFloodGeometry(geometry, districtId) {
   await db.collection('flood_geometry').doc(districtId).set({
@@ -32,9 +30,11 @@ async function writeFloodGeometry(geometry, districtId) {
   });
 }
 
-
 async function writeRiskState(districtId, data) {
   const prediction = data.prediction ?? null;
+
+  const flooded =
+    data.currentRisk === 'MODERATE' || data.currentRisk === 'HIGH';
 
   await db.collection('risk_states').doc(districtId).set({
     districtId,
@@ -42,16 +42,15 @@ async function writeRiskState(districtId, data) {
     centerLat: data.centerLat,
     centerLng: data.centerLng,
 
-    currentRadius: data.currentRadius * 1000, // km → meters
+    currentRadius: data.currentRadius * 1000,
     currentRisk: data.currentRisk,
     confidence: data.confidence ?? null,
 
     predictedRadius: prediction?.predictedRadius
-      ? prediction.predictedRadius * 1000 // km → meters
+      ? prediction.predictedRadius * 1000
       : null,
 
     predictedRisk: prediction?.predictedRisk ?? null,
-
     predictionWindow: prediction?.predictionWindow ?? null,
 
     predictionExpiresAt: prediction?.predictionExpiresAt
@@ -60,12 +59,22 @@ async function writeRiskState(districtId, data) {
         )
       : null,
 
+    lastFloodedAt: flooded
+      ? admin.firestore.FieldValue.serverTimestamp()
+      : data.lastFloodedAt ?? null,
+
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
+}
+
+async function readPreviousRiskState(districtId) {
+  const doc = await db.collection('risk_states').doc(districtId).get();
+  return doc.exists ? doc.data() : null;
 }
 
 module.exports = {
   writeFloodStatus,
   writeFloodGeometry,
   writeRiskState,
+  readPreviousRiskState,
 };

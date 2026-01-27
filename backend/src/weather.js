@@ -5,7 +5,7 @@ const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast';
 
 async function fetchRainfall(lat, lon) {
   const res = await axios.get(OPEN_METEO_URL, {
-    httpsAgent, // 🔴 FIX
+    httpsAgent,
     params: {
       latitude: lat,
       longitude: lon,
@@ -15,8 +15,8 @@ async function fetchRainfall(lat, lon) {
     },
   });
 
-  const rain = res.data.hourly?.rain || [];
-  const prob = res.data.hourly?.precipitation_probability || [];
+  const rain = res.data.hourly?.rain ?? [];
+  const prob = res.data.hourly?.precipitation_probability ?? [];
 
   let rainfallLast24h = 0;
   for (let i = 0; i < 24 && i < rain.length; i++) {
@@ -36,13 +36,22 @@ async function fetchRainfall(lat, lon) {
   for (let i = 24; i < 36 && i < rain.length; i++) forecastRain12h += rain[i] || 0;
   for (let i = 24; i < 48 && i < rain.length; i++) forecastRain24h += rain[i] || 0;
 
+  // console.log('🌧️ WEATHER', {
+  //   lat,
+  //   lon,
+  //   rainfallLast24h,
+  //   maxRainProb,
+  //   forecastRain6h,
+  //   forecastRain12h,
+  //   forecastRain24h,
+  // });
 
   return {
     rainfallLast24h,
     maxRainProb,
     forecastRain6h,
     forecastRain12h,
-    forecastRain24h
+    forecastRain24h,
   };
 }
 
