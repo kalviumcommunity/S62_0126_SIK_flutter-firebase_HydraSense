@@ -7,116 +7,380 @@ void showRiskInfoSheet({
   required RiskState state,
 }) {
   final now = DateTime.now();
-
-  final predictionValid =
-      state.predictionExpiresAt != null &&
+  final predictionValid = state.predictionExpiresAt != null &&
       now.isBefore(state.predictionExpiresAt!);
 
   showModalBottomSheet(
     context: context,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
     builder: (_) {
-      return Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              state.districtId.toUpperCase(),
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            _infoRow(
-              'Location',
-              '${state.centerLat.toStringAsFixed(3)}, '
-              '${state.centerLng.toStringAsFixed(3)}',
-            ),
-
-            const Divider(height: 24),
-
-            _infoRow('Current Risk', state.currentRisk),
-            _infoRow(
-              'Meaning',
-              getRiskExplanation(state.currentRisk),
-            ),
-
-            if (state.confidence != null && state.confidence! >= 0.2)
-              _infoRow(
-                'Confidence',
-                '${(state.confidence! * 100).toStringAsFixed(0)}%',
-              ),
-
-            if (state.confidence != null && state.confidence! < 0.2)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  'Limited data available for confidence estimation.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
+      return GestureDetector(
+        onTap: () => Navigator.pop(context),
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          color: Colors.black.withValues(alpha: 0.4),
+          child: DraggableScrollableSheet(
+            initialChildSize: 0.7,
+            minChildSize: 0.4,
+            maxChildSize: 0.9,
+            builder: (context, scrollController) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                  ],
                 ),
-              ),
-
-            if (predictionValid &&
-                state.predictedRisk != null &&
-                state.predictionWindow != null &&
-                state.predictedRadius != null) ...[
-              const Divider(height: 24),
-
-              _infoRow('Predicted Risk', state.predictedRisk!),
-
-              _infoRow(
-                'Prediction Window',
-                'Next ${state.predictionWindow} hours',
-              ),
-
-              _infoRow(
-                'Possible Spread',
-                '${(state.predictedRadius! / 1000).toStringAsFixed(1)} km radius',
-              ),
-
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  getPredictionExplanation(),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
+                child: Column(
+                  children: [
+                    Container(
+                      height: 6,
+                      width: 40,
+                      margin: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        controller: scrollController,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 16,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                AnimatedRiskIcon(
+                                  riskLevel: state.currentRisk,
+                                  size: 28,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    state.districtId.toUpperCase(),
+                                    style: const TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            _buildInfoSection(
+                              icon: Icons.location_on,
+                              title: 'Location',
+                              value:
+                                  '${state.centerLat.toStringAsFixed(4)}, '
+                                  '${state.centerLng.toStringAsFixed(4)}',
+                            ),
+                            const SizedBox(height: 24),
+                            _buildRiskSection(state),
+                            if (predictionValid &&
+                                state.predictedRisk != null &&
+                                state.predictionWindow != null &&
+                                state.predictedRadius != null) ...[
+                              const SizedBox(height: 24),
+                              _buildPredictionSection(state),
+                            ],
+                            const SizedBox(height: 24),
+                            _buildInfoSection(
+                              icon: Icons.access_time,
+                              title: 'Last Updated',
+                              value: _formatTime(state.updatedAt),
+                            ),
+                            const SizedBox(height: 40),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-
-            const Divider(height: 24),
-
-            _infoRow(
-              'Last Updated',
-              _formatTime(state.updatedAt),
-            ),
-          ],
+              );
+            },
+          ),
         ),
       );
     },
   );
 }
 
-Widget _infoRow(String label, String value) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 6),
+Widget _buildInfoSection({
+  required IconData icon,
+  required String title,
+  required String value,
+}) {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.grey.shade50,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: Colors.grey.shade200),
+    ),
     child: Row(
+      children: [
+        Icon(
+          icon,
+          color: const Color(0xFF007AFF),
+          size: 20,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildRiskSection(RiskState state) {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          getRiskGradientStart(state.currentRisk),
+          getRiskGradientEnd(state.currentRisk),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(
+        color: getRiskColor(state.currentRisk).withValues(alpha: 0.3),
+        width: 2,
+      ),
+    ),
+    child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: getRiskColor(state.currentRisk).withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: AnimatedRiskIcon(
+                riskLevel: state.currentRisk,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'CURRENT RISK: ${state.currentRisk.toUpperCase()}',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: getRiskColor(state.currentRisk),
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          getRiskExplanation(state.currentRisk),
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey.shade700,
+            height: 1.5,
+          ),
+        ),
+        if (state.confidence != null) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Confidence Level',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    LinearProgressIndicator(
+                      value: state.confidence!,
+                      backgroundColor: Colors.grey.shade300,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        getRiskColor(state.currentRisk),
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                      minHeight: 6,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '${(state.confidence! * 100).toStringAsFixed(0)}%',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: getRiskColor(state.currentRisk),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
+Widget _buildPredictionSection(RiskState state) {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          const Color(0xFFFF9500).withValues(alpha: 0.1),
+          const Color(0xFFFF3B30).withValues(alpha: 0.1),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(
+        color: const Color(0xFFFF9500).withValues(alpha: 0.3),
+        width: 2,
+      ),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF9500).withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.timeline,
+                color: Color(0xFFFF9500),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'PREDICTED OUTLOOK',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFFFF9500),
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _predictionRow(
+          'Risk Level',
+          state.predictedRisk!.toUpperCase(),
+          const Color(0xFFFF3B30),
+        ),
+        _predictionRow(
+          'Time Frame',
+          'Next ${state.predictionWindow} hours',
+          const Color(0xFF007AFF),
+        ),
+        _predictionRow(
+          'Possible Spread',
+          '${(state.predictedRadius! / 1000).toStringAsFixed(1)} km radius',
+          const Color(0xFF5856D6),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                color: Colors.grey.shade600,
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  getPredictionExplanation(),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _predictionRow(String label, String value, Color color) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          margin: const EdgeInsets.only(right: 12),
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
         Expanded(
-          flex: 3,
           child: Text(
             label,
             style: TextStyle(
@@ -125,14 +389,12 @@ Widget _infoRow(String label, String value) {
             ),
           ),
         ),
-        Expanded(
-          flex: 5,
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: color,
+            fontSize: 14,
           ),
         ),
       ],

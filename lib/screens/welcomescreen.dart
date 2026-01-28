@@ -72,9 +72,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   padding: const EdgeInsets.all(28),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(28),
-                    color: Colors.white.withOpacity(0.12),
+                    color: Colors.white.withValues(alpha: 0.12),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                     ),
                     boxShadow: const [
                       BoxShadow(
@@ -202,7 +202,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(30),
           border: Border.all(
-            color: Colors.white.withOpacity(0.35),
+            color: Colors.white.withValues(alpha:0.35),
           ),
         ),
         child: Text(

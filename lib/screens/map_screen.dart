@@ -29,14 +29,16 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen>
-    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+    with WidgetsBindingObserver, TickerProviderStateMixin {
   final MapController _mapController = MapController();
-  late AnimationController _pulseController;
+
+  late final AnimationController _pulseController;
+  late final AnimationController _panelController;
+  late final Animation<double> _panelAnimation;
 
   LatLng? _userLocation;
   bool _hasMovedCamera = false;
   bool _showRiskPanel = true;
-
   bool _checkingSafety = false;
 
   SafetyCheckResult _safetyResult = SafetyCheckResult(
@@ -56,8 +58,19 @@ class _MapScreenState extends State<MapScreen>
       duration: const Duration(seconds: 2),
     )..repeat();
 
-    _loadUserLocation();
+    _panelController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
 
+    _panelAnimation = CurvedAnimation(
+      parent: _panelController,
+      curve: Curves.easeOutCubic,
+    );
+
+    _panelController.forward();
+
+    _loadUserLocation();
     WidgetsBinding.instance.addObserver(this);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -69,6 +82,7 @@ class _MapScreenState extends State<MapScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _pulseController.dispose();
+    _panelController.dispose();
     super.dispose();
   }
 
@@ -92,6 +106,7 @@ class _MapScreenState extends State<MapScreen>
 
     final latLng = LatLng(position.latitude, position.longitude);
 
+    if (!mounted) return;
     setState(() => _userLocation = latLng);
 
     if (!_hasMovedCamera) {
@@ -143,16 +158,30 @@ class _MapScreenState extends State<MapScreen>
     }
   }
 
-  /// 🔔 PHASE 8: Prediction-aware contextual banner logic
+  void _toggleRiskPanel() {
+    if (_showRiskPanel) {
+      _panelController.reverse().then((_) {
+        if (mounted) {
+          setState(() => _showRiskPanel = false);
+        }
+      });
+    } else {
+      setState(() => _showRiskPanel = true);
+      _panelController.forward();
+    }
+  }
+
   RiskState? _getRelevantPrediction(List<RiskState> states) {
     if (_userLocation == null) return null;
 
     final now = DateTime.now();
 
     for (final state in states) {
-      if (state.predictedRadius == null) continue;
-      if (state.predictionExpiresAt == null) continue;
-      if (now.isAfter(state.predictionExpiresAt!)) continue;
+      if (state.predictedRadius == null ||
+          state.predictionExpiresAt == null ||
+          now.isAfter(state.predictionExpiresAt!)) {
+        continue;
+      }
 
       final center = LatLng(state.centerLat, state.centerLng);
       final d = distanceMeters(_userLocation!, center);
@@ -174,11 +203,12 @@ class _MapScreenState extends State<MapScreen>
           MapAppBar(
             onSearchTap: _openSearchDialog,
             onMyLocationTap: _goToMyLocation,
+            onRiskPanelToggle: _toggleRiskPanel,
+            showPanel: _showRiskPanel,
           ),
 
-          /// 🔔 Prediction-aware banner (only when relevant)
           Consumer<RiskStateProvider>(
-            builder: (_, provider, __) {
+            builder: (_, provider, _) {
               final prediction =
                   _getRelevantPrediction(provider.riskStates);
 
@@ -201,18 +231,13 @@ class _MapScreenState extends State<MapScreen>
             },
           ),
 
-          _buildRiskPanel(),
-
+          if (_showRiskPanel) _buildRiskPanel(),
           if (_safetyResult.isInDanger) _buildSafetyAlert(),
-
           _buildSafetyStatus(),
 
-          /// 📴 PHASE 9: Last-updated indicator (offline-safe)
           Consumer<RiskStateProvider>(
-            builder: (_, provider, __) {
-              if (provider.riskStates.isEmpty) {
-                return const SizedBox();
-              }
+            builder: (_, provider, _) {
+              if (provider.riskStates.isEmpty) return const SizedBox();
 
               final lastUpdated = provider.riskStates
                   .map((e) => e.updatedAt)
@@ -221,13 +246,27 @@ class _MapScreenState extends State<MapScreen>
               return Positioned(
                 bottom: 4,
                 right: 8,
-                child: Text(
-                  'Last updated '
-                  '${lastUpdated.hour.toString().padLeft(2, '0')}:'
-                  '${lastUpdated.minute.toString().padLeft(2, '0')}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey.shade600,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 6,
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    'Updated ${lastUpdated.hour.toString().padLeft(2, '0')}:'
+                    '${lastUpdated.minute.toString().padLeft(2, '0')}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey.shade700,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               );
@@ -252,7 +291,9 @@ class _MapScreenState extends State<MapScreen>
       ),
       children: [
         TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          urlTemplate:
+              'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+          subdomains: const ['a', 'b', 'c'],
           userAgentPackageName: 'com.example.hydrasense',
         ),
         _buildFloodZones(),
@@ -268,7 +309,7 @@ class _MapScreenState extends State<MapScreen>
 
   Widget _buildFloodZones() {
     return Consumer<RiskStateProvider>(
-      builder: (_, provider, __) {
+      builder: (_, provider, _) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _updateSafetyCheck(provider.riskStates);
         });
@@ -296,7 +337,7 @@ class _MapScreenState extends State<MapScreen>
 
   Widget _buildZoneMarkers() {
     return Consumer<RiskStateProvider>(
-      builder: (_, provider, __) {
+      builder: (_, provider, _) {
         return MarkerLayer(
           markers: provider.riskStates.map((state) {
             return Marker(
@@ -306,7 +347,24 @@ class _MapScreenState extends State<MapScreen>
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () => _onFloodZoneTap(state),
-                child: const SizedBox(width: 60, height: 60),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color:
+                          getRiskColor(state.currentRisk).withValues(alpha: 0.3),
+                      width: 2,
+                    ),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      getRiskIcon(state.currentRisk),
+                      color: getRiskColor(state.currentRisk),
+                      size: 24,
+                    ),
+                  ),
+                ),
               ),
             );
           }).toList(),
@@ -317,21 +375,36 @@ class _MapScreenState extends State<MapScreen>
 
   Widget _buildRiskPanel() {
     return Consumer<RiskStateProvider>(
-      builder: (_, provider, __) {
-        if (!_showRiskPanel || provider.riskStates.isEmpty) {
-          return const SizedBox();
-        }
+      builder: (_, provider, _) {
+        if (provider.riskStates.isEmpty) return const SizedBox();
 
         final risk = provider.riskStates.first;
 
-        return RiskPanel(
-          title: 'Flood Risk: ${risk.currentRisk.toUpperCase()}',
-          subtitle: risk.predictedRisk != null
-              ? 'Predicted to increase in ${risk.predictionWindow} hrs'
-              : 'No immediate escalation predicted',
-          riskColor: getRiskColor(risk.currentRisk),
-          riskIcon: getRiskIcon(risk.currentRisk),
-          onClose: () => setState(() => _showRiskPanel = false),
+        return AnimatedBuilder(
+          animation: _panelAnimation,
+          builder: (context, child) {
+            return Positioned(
+              bottom: 20,
+              left: 16,
+              right: 16,
+              child: Transform.translate(
+                offset: Offset(0, (1 - _panelAnimation.value) * 100),
+                child: Opacity(
+                  opacity: _panelAnimation.value,
+                  child: child,
+                ),
+              ),
+            );
+          },
+          child: RiskPanel(
+            title: 'Flood Risk: ${risk.currentRisk.toUpperCase()}',
+            subtitle: risk.predictedRisk != null
+                ? 'Predicted to increase in ${risk.predictionWindow} hrs'
+                : 'No immediate escalation predicted',
+            riskColor: getRiskColor(risk.currentRisk),
+            riskIcon: getRiskIcon(risk.currentRisk),
+            onClose: _toggleRiskPanel,
+          ),
         );
       },
     );
@@ -342,13 +415,13 @@ class _MapScreenState extends State<MapScreen>
       bottom: 100,
       left: 16,
       right: 16,
-      child: SafetyAlertBanner(
-        safetyResult: _safetyResult,
-        onTap: () {
-          if (_userLocation != null) {
-            _mapController.move(_userLocation!, 13);
-          }
-        },
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 500),
+        opacity: _safetyResult.isInDanger ? 1 : 0,
+        child: SafetyAlertBanner(
+          safetyResult: _safetyResult,
+          onTap: _goToMyLocation,
+        ),
       ),
     );
   }
@@ -358,8 +431,22 @@ class _MapScreenState extends State<MapScreen>
       bottom: _safetyResult.isInDanger ? 88 : 16,
       left: 16,
       right: 16,
-      child: SafetyStatusIndicator(
-        safetyResult: _safetyResult,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 400),
+        transitionBuilder: (child, animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: SizeTransition(
+              sizeFactor: animation,
+              axis: Axis.vertical,
+              child: child,
+            ),
+          );
+        },
+        child: SafetyStatusIndicator(
+          key: ValueKey(_safetyResult.status),
+          safetyResult: _safetyResult,
+        ),
       ),
     );
   }

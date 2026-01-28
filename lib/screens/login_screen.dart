@@ -91,7 +91,7 @@ class _LoginScreenState extends State<LoginScreen>
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                     ),
                     child: const Icon(
                       Icons.arrow_back_ios_new,
@@ -114,9 +114,9 @@ class _LoginScreenState extends State<LoginScreen>
                         padding: const EdgeInsets.all(28),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(28),
-                          color: Colors.white.withOpacity(0.12),
+                          color: Colors.white.withValues(alpha: 0.12),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                           ),
                           boxShadow: const [
                             BoxShadow(
@@ -206,6 +206,10 @@ class _LoginScreenState extends State<LoginScreen>
                                         error = '';
                                       });
 
+                                      // ✅ Capture navigator BEFORE async gap
+                                      final navigator =
+                                          Navigator.of(context);
+
                                       final success =
                                           await _authController.login(
                                         emailController.text,
@@ -223,8 +227,7 @@ class _LoginScreenState extends State<LoginScreen>
                                         return;
                                       }
 
-                                      Navigator.pushReplacement(
-                                        context,
+                                      navigator.pushReplacement(
                                         MaterialPageRoute(
                                           builder: (_) =>
                                               const HomeScreen(),
@@ -263,7 +266,7 @@ class _LoginScreenState extends State<LoginScreen>
         hintText: hint,
         hintStyle: const TextStyle(color: Colors.white54),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.12),
+        fillColor: Colors.white.withValues(alpha: 0.12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,

@@ -76,7 +76,7 @@ class SafetyService {
 
   static Future<SafetyCheckResult> checkUserSafety(
     LatLng? location,
-    List<dynamic> _ignored,
+    List<dynamic> ignored,
   ) async {
     if (location == null) {
       return SafetyCheckResult.locationUnavailable();
@@ -99,7 +99,7 @@ class SafetyService {
       final data = jsonDecode(response.body);
       return SafetyCheckResult.fromJson(data);
     } catch (e) {
-      print('❌ Safety check failed: $e');
+      // print('❌ Safety check failed: $e');
       return SafetyCheckResult.unknownError();
     }
   }
