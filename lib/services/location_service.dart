@@ -13,7 +13,7 @@ class LocationService {
       final serviceEnabled =
           await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        print('❌ Location services disabled');
+        // print('❌ Location services disabled');
         return null;
       }
 
@@ -27,7 +27,7 @@ class LocationService {
 
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        print('❌ Location permission denied');
+        // print('❌ Location permission denied');
         return null;
       }
 
@@ -36,17 +36,17 @@ class LocationService {
           await Geolocator.getLastKnownPosition();
 
       if (lastKnown != null) {
-        print('📍 Using last known location');
+        // print('📍 Using last known location');
         return lastKnown;
       }
 
       // 4️⃣ Fallback: request current position (NO timeout)
-      print('📡 Requesting current GPS fix...');
+      // print('📡 Requesting current GPS fix...');
       return await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.medium,
       );
     } catch (e) {
-      print('❌ Location error: $e');
+      // print('❌ Location error: $e');
       return null;
     }
   }

@@ -39,7 +39,7 @@ class HomeScreen extends StatelessWidget {
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white.withValues(alpha:0.15),
                       ),
                       child: const Icon(
                         Icons.water_drop,
@@ -80,7 +80,7 @@ class HomeScreen extends StatelessWidget {
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withValues(alpha:0.15),
                         ),
                         child: const Icon(
                           Icons.logout,
@@ -104,7 +104,7 @@ class HomeScreen extends StatelessWidget {
                     'Welcome back,',
                     style: TextStyle(
                       fontSize: 18,
-                      color: Colors.white.withOpacity(0.85),
+                      color: Colors.white.withValues(alpha: 0.85),
                     ),
                   ),
                 ),
@@ -134,9 +134,9 @@ class HomeScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(26),
-                    color: Colors.white.withOpacity(0.12),
+                    color: Colors.white.withValues(alpha: 0.12),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                     ),
                   ),
                   child: Column(
@@ -249,9 +249,9 @@ class HomeScreen extends StatelessWidget {
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(22),
-          color: Colors.white.withOpacity(0.12),
+          color: Colors.white.withValues(alpha: 0.12),
           border: Border.all(
-            color: Colors.white.withOpacity(0.2),
+            color: Colors.white.withValues(alpha: 0.2),
           ),
         ),
         child: Column(

@@ -3,7 +3,6 @@ import './welcomescreen.dart';
 import './home_screen.dart';
 import '../controllers/auth_controller.dart';
 
-
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
@@ -92,7 +91,7 @@ class _SignupScreenState extends State<SignupScreen>
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                     ),
                     child: const Icon(
                       Icons.arrow_back_ios_new,
@@ -114,9 +113,9 @@ class _SignupScreenState extends State<SignupScreen>
                         padding: const EdgeInsets.all(28),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(28),
-                          color: Colors.white.withOpacity(0.12),
+                          color: Colors.white.withValues(alpha: 0.12),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                           ),
                           boxShadow: const [
                             BoxShadow(
@@ -206,6 +205,10 @@ class _SignupScreenState extends State<SignupScreen>
                                         error = '';
                                       });
 
+                                      // ✅ Capture navigator BEFORE async gap
+                                      final navigator =
+                                          Navigator.of(context);
+
                                       final success =
                                           await _authController.signup(
                                         emailController.text,
@@ -222,8 +225,7 @@ class _SignupScreenState extends State<SignupScreen>
                                         return;
                                       }
 
-                                      Navigator.pushReplacement(
-                                        context,
+                                      navigator.pushReplacement(
                                         MaterialPageRoute(
                                           builder: (_) =>
                                               const HomeScreen(),
@@ -262,7 +264,7 @@ class _SignupScreenState extends State<SignupScreen>
         hintText: hint,
         hintStyle: const TextStyle(color: Colors.white54),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.12),
+        fillColor: Colors.white.withValues(alpha: 0.12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,

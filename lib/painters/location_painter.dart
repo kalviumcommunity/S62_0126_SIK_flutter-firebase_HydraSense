@@ -11,7 +11,7 @@ class LocationWavePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..style = PaintingStyle.fill
-      ..color = Colors.white.withOpacity(0.06);
+      ..color = Colors.white.withValues(alpha: 0.06);
 
     for (var i = 0; i < 6; i++) {
       final path = Path();
@@ -54,7 +54,7 @@ class LocationSandPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..style = PaintingStyle.fill
-      ..color = const Color.fromARGB(255, 190, 150, 70).withOpacity(0.12);
+      ..color = const Color.fromARGB(255, 190, 150, 70).withValues(alpha:0.12);
 
     for (var i = 0; i < 3; i++) {
       final path = Path();

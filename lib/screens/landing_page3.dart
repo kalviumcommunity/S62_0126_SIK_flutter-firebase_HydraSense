@@ -93,7 +93,7 @@ class _LandingPage3State extends State<LandingPage3>
         // Waves
         AnimatedBuilder(
           animation: _waveController,
-          builder: (_, __) {
+          builder: (_, _) {
             return CustomPaint(
               painter: LocationWavePainter(_waveController.value),
               size: Size.infinite,
@@ -104,7 +104,7 @@ class _LandingPage3State extends State<LandingPage3>
         // Sand
         AnimatedBuilder(
           animation: _waveController,
-          builder: (_, __) {
+          builder: (_, _) {
             return CustomPaint(
               painter: LocationSandPainter(_waveController.value),
               size: Size.infinite,
@@ -241,7 +241,7 @@ class _LandingPage3State extends State<LandingPage3>
       width: isActive ? 24 : 8,
       height: 8,
       decoration: BoxDecoration(
-        color: isActive ? Colors.white : Colors.white.withOpacity(0.4),
+        color: isActive ? Colors.white : Colors.white.withValues(alpha:0.4),
         borderRadius: BorderRadius.circular(4),
       ),
     );
