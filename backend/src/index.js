@@ -9,17 +9,21 @@ const cron = require('node-cron');
 const { fetchRainfall } = require('./weather');
 const { fetchRiverDischarge } = require('./river');
 const { computeFloodStatus } = require('./floodLogic');
+console.log('DEBUG floodLogic:', require('./floodLogic'));
 const { computePrediction } = require('./predictionLogic');
+
 const {
   writeFloodStatus,
   writeFloodGeometry,
   writeRiskState,
+  readPreviousRiskState,
 } = require('./firestore');
+
 const {
   createFloodPolygon,
   computeBoundingBox,
 } = require('./geometry');
-const { applyStructuralRisk } = require('./structuralRisk');
+
 const DISTRICTS = require('./districts');
 
 const app = express();
@@ -38,18 +42,14 @@ async function runFloodUpdateForDistrict(district) {
 
     const weather = await fetchRainfall(district.lat, district.lon);
     const river = await fetchRiverDischarge(district.lat, district.lon);
+    const previousState = await readPreviousRiskState(district.id);
 
     const floodStatus = computeFloodStatus({
       ...weather,
       ...river,
+      previousState,
+      districtId: district.id,
     });
-
-    // Structural (post-event) bias
-    floodStatus.currentRisk = applyStructuralRisk(
-      floodStatus.currentRisk,
-      district.id
-    );
-
 
     const prediction = computePrediction({
       currentRadius: floodStatus.currentRadius,
@@ -58,6 +58,7 @@ async function runFloodUpdateForDistrict(district) {
       forecastRain6h: weather.forecastRain6h,
       forecastRain12h: weather.forecastRain12h,
       forecastRain24h: weather.forecastRain24h,
+      forecastMaxIntensity1h: weather.maxRainIntensity1h,
     });
 
     const polygon = createFloodPolygon(
@@ -73,8 +74,14 @@ async function runFloodUpdateForDistrict(district) {
     );
 
     await writeFloodStatus(floodStatus, district.id);
+
     await writeFloodGeometry(
-      { polygon, bbox, risk: floodStatus.currentRisk, confidence: floodStatus.confidence },
+      {
+        polygon,
+        bbox,
+        risk: floodStatus.currentRisk,
+        confidence: floodStatus.confidence,
+      },
       district.id
     );
 
@@ -85,10 +92,11 @@ async function runFloodUpdateForDistrict(district) {
       currentRisk: floodStatus.currentRisk,
       confidence: floodStatus.confidence,
       prediction,
-
       metrics: {
         rainfallLast24h: weather.rainfallLast24h,
-        maxRainProb: weather.maxRainProb,
+        maxRainIntensity1h: weather.maxRainIntensity1h,
+        currentRainProb: weather.currentRainProb,
+        forecastRainProb: weather.forecastRainProb,
         forecastRain6h: weather.forecastRain6h,
         forecastRain12h: weather.forecastRain12h,
         forecastRain24h: weather.forecastRain24h,

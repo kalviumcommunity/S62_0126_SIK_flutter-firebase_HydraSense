@@ -1,44 +1,44 @@
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
+const { computeFloodSeverity } = require('./floodSeverity');
+const { applyDrainageMemory } = require('./drainageMemory');
+const { applyStructuralRisk } = require('./structuralRisk');
 
 const BASE_RADIUS_KM = 3;
-const RAIN_24H_THRESHOLD = 60;
-const RIVER_DANGER_DISCHARGE = 800;
-const PROBABILITY_THRESHOLD = 70;
+
+function classifyRisk(severity) {
+  if (severity < 0.7) return 'LOW';
+  if (severity < 1.3) return 'MODERATE';
+  return 'HIGH';
+}
 
 function computeFloodStatus({
-  rainfallLast24h = 0,
-  maxRainProb = 0,
-  riverDischarge = 0,
+  maxRainIntensity1h,
+  rainfallLast24h,
+  riverDischarge,
+  previousState,
+  districtId,
 }) {
-  const rainFactor = clamp(rainfallLast24h / RAIN_24H_THRESHOLD, 0, 2);
-  const riverFactor = clamp(riverDischarge / RIVER_DANGER_DISCHARGE, 0, 2);
-  const probabilityFactor = maxRainProb >= PROBABILITY_THRESHOLD ? 0.2 : 0;
+  const { severity } = computeFloodSeverity({
+    maxRainIntensity1h,
+    rainfallLast24h,
+    riverDischarge,
+  });
 
-  const combinedFactor =
-    0.6 * riverFactor +
-    0.3 * rainFactor +
-    probabilityFactor;
+  let finalSeverity = applyDrainageMemory({
+    previousState,
+    currentSeverity: severity,
+  });
 
-  const dominantFactor = clamp(combinedFactor, 1, 2);
-  const currentRadius = BASE_RADIUS_KM * dominantFactor;
-
-  let currentRisk = 'LOW';
-  if (riverFactor > 1.2) currentRisk = 'MODERATE';
-  if (riverFactor > 1.6) currentRisk = 'HIGH';
-  if (rainFactor > 1.4 && riverFactor > 1.0) currentRisk = 'HIGH';
-
-  const confidence = clamp((rainFactor + riverFactor) / 2, 0, 1);
-
+  finalSeverity = applyStructuralRisk({
+    severity: finalSeverity,
+    districtId,
+  });
 
   return {
-    currentRadius,
-    currentRisk,
-    confidence,
-    rainfallLast24h,
-    maxRainProb,
-    riverDischarge,
+    severity: finalSeverity,
+    currentRisk: classifyRisk(finalSeverity),
+    currentRadius:
+      BASE_RADIUS_KM * Math.max(0.8, Math.min(finalSeverity, 2.2)),
+    confidence: Math.min(1, finalSeverity / 1.5),
   };
 }
 
