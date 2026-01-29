@@ -217,7 +217,7 @@ class _LandingPage1State extends State<LandingPage1>
                             children: [
                               Icon(
                                 Icons.arrow_forward_ios,
-                                color: Colors.white.withOpacity(0.7),
+                                color: Colors.white.withValues(alpha:0.7),
                                 size: 16,
                               ),
                               const SizedBox(width: 8),
@@ -254,7 +254,7 @@ class WaveTexturePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..style = PaintingStyle.fill
-      ..color = Colors.white.withOpacity(0.08);
+      ..color = Colors.white.withValues(alpha:0.08);
 
     // Multiple wave layers for depth
     for (var i = 0; i < 5; i++) {
@@ -296,7 +296,7 @@ class SandDunePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..style = PaintingStyle.fill
-      ..color = const Color.fromARGB(255, 180, 140, 60).withOpacity(0.15);
+      ..color = const Color.fromARGB(255, 180, 140, 60).withValues(alpha:0.15);
 
     // Create dune-like shapes in the bottom section
     for (var i = 0; i < 4; i++) {

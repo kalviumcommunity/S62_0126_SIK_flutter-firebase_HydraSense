@@ -12,11 +12,33 @@ class LocationService {
     if (!serviceEnabled) {
       throw Exception("Location services are disabled");
     }
+  Future<Position?> getCurrentLocation() async {
+    try {
+      // 1️⃣ Check if location services are enabled
+      final serviceEnabled =
+          await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        // print('❌ Location services disabled');
+        return null;
+      }
 
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
+      // 2️⃣ Check & request permission
+      LocationPermission permission =
+          await Geolocator.checkPermission();
+
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        // print('❌ Location permission denied');
+        return null;
+      }
+
+      // 3️⃣ Try last known position (FAST, reliable)
+      final lastKnown =
+          await Geolocator.getLastKnownPosition();
 
     if (permission == LocationPermission.denied) {
       throw Exception("Location permission denied");
@@ -24,12 +46,20 @@ class LocationService {
 
     if (permission == LocationPermission.deniedForever) {
       throw Exception("Location permission permanently denied");
-    }
+      if (lastKnown != null) {
+        // print('📍 Using last known location');
+        return lastKnown;
+      }
 
-    return await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.medium,
-      timeLimit: const Duration(seconds: 10),
-    );
+      // 4️⃣ Fallback: request current position (NO timeout)
+      // print('📡 Requesting current GPS fix...');
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium,
+      );
+    } catch (e) {
+      // print('❌ Location error: $e');
+      return null;
+    }
   }
 
   Future<List<Map<String, dynamic>>> getPlaceSuggestions(String query) async {

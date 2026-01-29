@@ -177,7 +177,6 @@ class _LandingPage2State extends State<LandingPage2>
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 16,
-                              fontWeight: FontWeight.normal,
                               color: Colors.white,
                               height: 1.6,
                               shadows: [
@@ -208,8 +207,9 @@ class _LandingPage2State extends State<LandingPage2>
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(
-                                      0.3 * (1 - _pulseController.value),
+                                    color: Colors.white.withValues(
+                                      alpha: 0.3 *
+                                          (1 - _pulseController.value),
                                     ),
                                     width: 2,
                                   ),
@@ -222,16 +222,19 @@ class _LandingPage2State extends State<LandingPage2>
                           AnimatedBuilder(
                             animation: _pulseController,
                             builder: (context, child) {
-                              final delayedValue = (_pulseController.value + 0.5) % 1.0;
-                              final scale = 1.0 + (delayedValue * 0.1);
+                              final delayedValue =
+                                  (_pulseController.value + 0.5) % 1.0;
+                              final scale =
+                                  1.0 + (delayedValue * 0.1);
                               return Container(
                                 width: 200 * scale,
                                 height: 200 * scale,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(
-                                      0.2 * (1 - delayedValue),
+                                    color: Colors.white.withValues(
+                                      alpha: 0.2 *
+                                          (1 - delayedValue),
                                     ),
                                     width: 2,
                                   ),
@@ -242,7 +245,8 @@ class _LandingPage2State extends State<LandingPage2>
 
                           // Main image
                           TweenAnimationBuilder<double>(
-                            duration: const Duration(milliseconds: 1200),
+                            duration:
+                                const Duration(milliseconds: 1200),
                             tween: Tween(begin: 0.8, end: 1.0),
                             curve: Curves.elasticOut,
                             builder: (context, value, child) {
@@ -255,7 +259,9 @@ class _LandingPage2State extends State<LandingPage2>
                               tag: 'location_image',
                               child: Image.asset(
                                 'assets/location.png',
-                                width: MediaQuery.of(context).size.width * 0.7,
+                                width:
+                                    MediaQuery.of(context).size.width *
+                                        0.7,
                                 fit: BoxFit.contain,
                               ),
                             ),
@@ -267,7 +273,8 @@ class _LandingPage2State extends State<LandingPage2>
 
                       // Page indicator dots
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 30),
+                        padding:
+                            const EdgeInsets.only(bottom: 30),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -296,14 +303,15 @@ class _LandingPage2State extends State<LandingPage2>
       width: isActive ? 24 : 8,
       height: 8,
       decoration: BoxDecoration(
-        color: isActive ? Colors.white : Colors.white.withOpacity(0.4),
+        color:
+            isActive ? Colors.white : Colors.white.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(4),
       ),
     );
   }
 }
 
-// Wave painter for location page
+// Wave painter
 class LocationWavePainter extends CustomPainter {
   final double animation;
 
@@ -313,7 +321,7 @@ class LocationWavePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..style = PaintingStyle.fill
-      ..color = Colors.white.withOpacity(0.06);
+      ..color = Colors.white.withValues(alpha: 0.06);
 
     for (var i = 0; i < 6; i++) {
       final path = Path();
@@ -325,9 +333,10 @@ class LocationWavePainter extends CustomPainter {
 
       for (double x = 0; x <= size.width; x++) {
         final y = yOffset +
-            math.sin((x / frequency) * 2 * math.pi +
-                    (animation * 2 * math.pi) +
-                    (i * 0.7)) *
+            math.sin(
+                    (x / frequency) * 2 * math.pi +
+                        (animation * 2 * math.pi) +
+                        (i * 0.7)) *
                 waveHeight;
         path.lineTo(x, y);
       }
@@ -344,7 +353,7 @@ class LocationWavePainter extends CustomPainter {
   bool shouldRepaint(LocationWavePainter oldDelegate) => true;
 }
 
-// Sand painter for bottom section
+// Sand painter
 class LocationSandPainter extends CustomPainter {
   final double animation;
 
@@ -354,7 +363,8 @@ class LocationSandPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..style = PaintingStyle.fill
-      ..color = const Color.fromARGB(255, 190, 150, 70).withOpacity(0.12);
+      ..color =
+          const Color.fromARGB(255, 190, 150, 70).withValues(alpha: 0.12);
 
     for (var i = 0; i < 3; i++) {
       final path = Path();
@@ -366,8 +376,8 @@ class LocationSandPainter extends CustomPainter {
 
       for (double x = 0; x <= size.width; x++) {
         final y = yOffset +
-            math.sin((x / frequency) * math.pi + 
-                    (animation * math.pi * 0.25) + 
+            math.sin((x / frequency) * math.pi +
+                    (animation * math.pi * 0.25) +
                     (i * 0.5)) *
                 duneHeight;
         path.lineTo(x, y);

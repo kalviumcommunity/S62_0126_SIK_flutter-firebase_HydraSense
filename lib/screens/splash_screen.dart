@@ -77,7 +77,7 @@ class _SplashScreenState extends State<SplashScreen>
               ),
             ),
           ),
-          
+
           // Animated waves
           AnimatedBuilder(
             animation: _waveController,
@@ -112,8 +112,9 @@ class _SplashScreenState extends State<SplashScreen>
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(
-                                      0.3 * (1 - _waveController.value),
+                                    color: Colors.white.withValues(
+                                      alpha: 0.3 *
+                                          (1 - _waveController.value),
                                     ),
                                     width: 2,
                                   ),
@@ -167,8 +168,9 @@ class _SplashScreenState extends State<SplashScreen>
                         width: 40,
                         height: 40,
                         child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white.withOpacity(0.5),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(
+                            Colors.white.withValues(alpha: 0.5),
                           ),
                           strokeWidth: 3,
                         ),
@@ -194,7 +196,7 @@ class SplashWavePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..style = PaintingStyle.fill
-      ..color = Colors.white.withOpacity(0.05);
+      ..color = Colors.white.withValues(alpha: 0.05);
 
     for (var i = 0; i < 3; i++) {
       final path = Path();
@@ -205,9 +207,10 @@ class SplashWavePainter extends CustomPainter {
 
       for (double x = 0; x <= size.width; x++) {
         final y = yOffset +
-            math.sin((x / 200) * 2 * math.pi +
-                    (animation * 2 * math.pi) +
-                    (i * 0.5)) *
+            math.sin(
+                    (x / 200) * 2 * math.pi +
+                        (animation * 2 * math.pi) +
+                        (i * 0.5)) *
                 waveHeight;
         path.lineTo(x, y);
       }
