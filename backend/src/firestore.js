@@ -44,7 +44,7 @@ async function writeRiskState(districtId, data) {
 
     currentRadius: data.currentRadius * 1000,
     currentRisk: data.currentRisk,
-    confidence: data.confidence ?? null,
+    confidence: data.confidence ?? 60,
 
     predictedRadius: prediction?.predictedRadius
       ? prediction.predictedRadius * 1000
@@ -62,6 +62,8 @@ async function writeRiskState(districtId, data) {
     lastFloodedAt: flooded
       ? admin.firestore.FieldValue.serverTimestamp()
       : data.lastFloodedAt ?? null,
+    
+    metrics: data.metrics ?? null,
 
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });

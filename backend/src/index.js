@@ -85,6 +85,15 @@ async function runFloodUpdateForDistrict(district) {
       currentRisk: floodStatus.currentRisk,
       confidence: floodStatus.confidence,
       prediction,
+
+      metrics: {
+        rainfallLast24h: weather.rainfallLast24h,
+        maxRainProb: weather.maxRainProb,
+        forecastRain6h: weather.forecastRain6h,
+        forecastRain12h: weather.forecastRain12h,
+        forecastRain24h: weather.forecastRain24h,
+        riverDischarge: river.riverDischarge,
+      },
     });
 
   } catch (err) {

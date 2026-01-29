@@ -18,6 +18,13 @@ class RiskState {
 
   final DateTime updatedAt;
 
+  final double? rainfallLast24h;
+  final double? forecastRain6h;
+  final double? forecastRain12h;
+  final double? forecastRain24h;
+  final double? maxRainProb;
+  final double? riverDischarge;
+
   RiskState({
     required this.districtId,
     required this.centerLat,
@@ -30,10 +37,18 @@ class RiskState {
     this.confidence,
     this.predictionExpiresAt,
     required this.updatedAt,
+
+    this.rainfallLast24h,
+    this.forecastRain6h,
+    this.forecastRain12h,
+    this.forecastRain24h,
+    this.maxRainProb,
+    this.riverDischarge,
   });
 
   factory RiskState.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final metrics = data['metrics'] as Map<String, dynamic>?;
 
     return RiskState(
       districtId: data['districtId'] as String,
@@ -59,6 +74,13 @@ class RiskState {
           : null,
 
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
+
+      rainfallLast24h: metrics?['rainfallLast24h']?.toDouble(),
+      forecastRain6h: metrics?['forecastRain6h']?.toDouble(),
+      forecastRain12h: metrics?['forecastRain12h']?.toDouble(),
+      forecastRain24h: metrics?['forecastRain24h']?.toDouble(),
+      maxRainProb: metrics?['maxRainProb']?.toDouble(),
+      riverDischarge: metrics?['riverDischarge']?.toDouble(),
     );
   }
 }
