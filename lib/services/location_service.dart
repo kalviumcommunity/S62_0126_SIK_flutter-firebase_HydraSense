@@ -7,18 +7,23 @@ class LocationService {
   final RateLimiter _searchLimiter =
       RateLimiter(const Duration(seconds: 1));
 
-  Future<Position?> getCurrentLocation() async {
+  Future<Position> getCurrentLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return null;
+    if (!serviceEnabled) {
+      throw Exception("Location services are disabled");
+    }
 
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
 
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      return null;
+    if (permission == LocationPermission.denied) {
+      throw Exception("Location permission denied");
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception("Location permission permanently denied");
     }
 
     return await Geolocator.getCurrentPosition(
@@ -27,8 +32,7 @@ class LocationService {
     );
   }
 
-  Future<List<Map<String, dynamic>>> getPlaceSuggestions(
-      String query) async {
+  Future<List<Map<String, dynamic>>> getPlaceSuggestions(String query) async {
     if (query.trim().length < 3) return [];
     if (!_searchLimiter.shouldAllow()) return [];
 
