@@ -189,22 +189,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           Icons.water_drop,
                           color: Colors.lightBlueAccent,
                         ),
-          child: Column(
-            children: [
-              // 🔝 Top App Bar (Custom)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-                child: Row(
-                  children: [
-                    // App Icon
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha:0.15),
                       ),
                       const SizedBox(width: 12),
                       const Text(
@@ -372,23 +356,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
-                       Navigator.of(context).popUntil((route) => route.isFirst);
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const WelcomeScreen(),
-                          ),
-                      );
-
-                      },
                       child: Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(26),
                           color: displayRiskColor.withOpacity(0.2),
                           border: Border.all(color: displayRiskColor.withOpacity(0.5), width: 2),
-                          shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha:0.15),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -517,55 +490,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(20),
                       color: Colors.white.withOpacity(0.1),
                       border: Border.all(color: Colors.white.withOpacity(0.3)),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              // 👋 Welcome Section
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Welcome back,',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.white.withValues(alpha: 0.85),
-                    ),
-                  ),
-                ),
-              ),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    user?.email ?? 'User',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              // 📊 Main Feature Card
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(26),
-                    color: Colors.white.withValues(alpha: 0.12),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.2),
                     ),
                     child: Column(
                       children: [
@@ -873,41 +797,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 const SizedBox(height: 20),
               ],
-  Widget _featureTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-  }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
-          color: Colors.white.withValues(alpha: 0.12),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.2),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: Colors.lightBlueAccent),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Colors.white70,
-              ),
             ),
           ),
         ),

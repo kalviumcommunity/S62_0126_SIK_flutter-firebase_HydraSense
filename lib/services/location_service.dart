@@ -4,27 +4,19 @@ import 'package:geolocator/geolocator.dart';
 import '../utils/rate_limiter.dart';
 
 class LocationService {
-  final RateLimiter _searchLimiter =
-      RateLimiter(const Duration(seconds: 1));
+  final RateLimiter _searchLimiter = RateLimiter(const Duration(seconds: 1));
 
-  Future<Position> getCurrentLocation() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      throw Exception("Location services are disabled");
-    }
   Future<Position?> getCurrentLocation() async {
     try {
       // 1️⃣ Check if location services are enabled
-      final serviceEnabled =
-          await Geolocator.isLocationServiceEnabled();
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         // print('❌ Location services disabled');
         return null;
       }
 
       // 2️⃣ Check & request permission
-      LocationPermission permission =
-          await Geolocator.checkPermission();
+      LocationPermission permission = await Geolocator.checkPermission();
 
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -37,21 +29,13 @@ class LocationService {
       }
 
       // 3️⃣ Try last known position (FAST, reliable)
-      final lastKnown =
-          await Geolocator.getLastKnownPosition();
-
-    if (permission == LocationPermission.denied) {
-      throw Exception("Location permission denied");
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      throw Exception("Location permission permanently denied");
+      final lastKnown = await Geolocator.getLastKnownPosition();
       if (lastKnown != null) {
         // print('📍 Using last known location');
         return lastKnown;
       }
 
-      // 4️⃣ Fallback: request current position (NO timeout)
+      // 4️⃣ Fallback: request current position
       // print('📡 Requesting current GPS fix...');
       return await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.medium,

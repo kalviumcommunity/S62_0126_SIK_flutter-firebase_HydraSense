@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:latlong2/latlong.dart';
 
 class RiskState {
   final String districtId;
@@ -45,6 +46,8 @@ class RiskState {
     this.maxRainProb,
     this.riverDischarge,
   });
+
+   LatLng get center => LatLng(centerLat, centerLng);
 
   factory RiskState.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
