@@ -12,22 +12,36 @@ async function fetchRainfall(lat, lon) {
       hourly: 'rain,precipitation_probability',
       past_hours: 24,
       forecast_hours: 24,
+      timezone: 'auto',
     },
   });
 
   const rain = res.data.hourly?.rain ?? [];
   const prob = res.data.hourly?.precipitation_probability ?? [];
 
+  // --- Accumulation + intensity ---
   let rainfallLast24h = 0;
+  let maxRainIntensity1h = 0;
+
   for (let i = 0; i < 24 && i < rain.length; i++) {
-    rainfallLast24h += rain[i] || 0;
+    const r = rain[i] || 0;
+    rainfallLast24h += r;
+    if (r > maxRainIntensity1h) maxRainIntensity1h = r;
   }
 
-  let maxRainProb = 0;
-  for (let i = 0; i < prob.length; i++) {
-    if (prob[i] > maxRainProb) maxRainProb = prob[i];
+  // --- CURRENT probability (last ~3 hours) ---
+  let currentRainProb = 0;
+  for (let i = 0; i < 3 && i < prob.length; i++) {
+    if (prob[i] > currentRainProb) currentRainProb = prob[i];
   }
 
+  // --- FORECAST probability (next 24h) ---
+  let forecastRainProb = 0;
+  for (let i = 24; i < 48 && i < prob.length; i++) {
+    if (prob[i] > forecastRainProb) forecastRainProb = prob[i];
+  }
+
+  // --- Forecast rainfall ---
   let forecastRain6h = 0;
   let forecastRain12h = 0;
   let forecastRain24h = 0;
@@ -36,19 +50,13 @@ async function fetchRainfall(lat, lon) {
   for (let i = 24; i < 36 && i < rain.length; i++) forecastRain12h += rain[i] || 0;
   for (let i = 24; i < 48 && i < rain.length; i++) forecastRain24h += rain[i] || 0;
 
-  // console.log('🌧️ WEATHER', {
-  //   lat,
-  //   lon,
-  //   rainfallLast24h,
-  //   maxRainProb,
-  //   forecastRain6h,
-  //   forecastRain12h,
-  //   forecastRain24h,
-  // });
-
   return {
     rainfallLast24h,
-    maxRainProb,
+    maxRainIntensity1h,
+
+    currentRainProb,
+    forecastRainProb,
+
     forecastRain6h,
     forecastRain12h,
     forecastRain24h,

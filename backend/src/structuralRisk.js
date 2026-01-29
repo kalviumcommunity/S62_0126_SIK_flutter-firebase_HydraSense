@@ -1,25 +1,11 @@
-// structuralRisk.js
 const FLOOD_ZONES = require('./floodProneZones');
 
-/**
- * Applies structural flood-prone bias.
- * This NEVER downgrades risk.
- * It only elevates risk if the area is historically vulnerable.
- */
-function applyStructuralRisk(currentRisk, districtId) {
+function applyStructuralRisk({ severity, districtId }) {
   const zone = FLOOD_ZONES.find(z => z.districtId === districtId);
+  if (!zone) return severity;
 
-
-  if (!zone) return currentRisk;
-
-if (districtId === 'bangalore') {
-    return 'HIGH';
-  }
-
-  if (currentRisk === 'LOW') return 'MODERATE';
-  if (currentRisk === 'MODERATE') return 'HIGH';
-
-  return currentRisk;
+  const multiplier = zone.riskMultiplier ?? 1.2;
+  return Math.min(severity * multiplier, 2.5);
 }
 
 module.exports = { applyStructuralRisk };
