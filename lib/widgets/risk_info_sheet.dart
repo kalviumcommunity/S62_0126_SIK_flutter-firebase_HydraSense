@@ -89,6 +89,10 @@ void showRiskInfoSheet({
                             ),
                             const SizedBox(height: 24),
                             _buildRiskSection(state),
+                            if (_hasAnyMetrics(state)) ...[
+                              const SizedBox(height: 24),
+                              _buildMetricsSection(state),
+                            ],
                             if (predictionValid &&
                                 state.predictedRisk != null &&
                                 state.predictionWindow != null &&
@@ -132,11 +136,7 @@ Widget _buildInfoSection({
     ),
     child: Row(
       children: [
-        Icon(
-          icon,
-          color: const Color(0xFF007AFF),
-          size: 20,
-        ),
+        Icon(icon, color: const Color(0xFF007AFF), size: 20),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -269,6 +269,94 @@ Widget _buildRiskSection(RiskState state) {
   );
 }
 
+Widget _buildMetricsSection(RiskState state) {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.grey.shade50,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: Colors.grey.shade200),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Why is this area at risk?',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (state.rainfallLast24h != null)
+          _metricTile(
+            'Rainfall (last 24 hours)',
+            '${state.rainfallLast24h!.toStringAsFixed(1)} mm',
+            'Heavy rainfall increases runoff and flooding risk.',
+            Icons.grain,
+          ),
+        if (state.forecastRain6h != null)
+          _metricTile(
+            'Forecast Rain (next 6 hours)',
+            '${state.forecastRain6h!.toStringAsFixed(1)} mm',
+            'Upcoming rain can worsen flooding before water recedes.',
+            Icons.cloud,
+          ),
+        if (state.riverDischarge != null)
+          _metricTile(
+            'River Discharge (flow rate)',
+            state.riverDischarge!.toStringAsFixed(1),
+            'Higher flow increases chances of river overflow.',
+            Icons.water,
+          ),
+      ],
+    ),
+  );
+}
+
+Widget _metricTile(
+  String title,
+  String value,
+  String explanation,
+  IconData icon,
+) {
+  return Theme(
+    data: ThemeData().copyWith(dividerColor: Colors.transparent),
+    child: ExpansionTile(
+      tilePadding: EdgeInsets.zero,
+      leading: Icon(icon, color: const Color(0xFF007AFF)),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      trailing: Text(
+        value,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Text(
+            explanation,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey.shade700,
+              height: 1.4,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 Widget _buildPredictionSection(RiskState state) {
   return Container(
     padding: const EdgeInsets.all(16),
@@ -278,8 +366,6 @@ Widget _buildPredictionSection(RiskState state) {
           const Color(0xFFFF9500).withValues(alpha: 0.1),
           const Color(0xFFFF3B30).withValues(alpha: 0.1),
         ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
       ),
       borderRadius: BorderRadius.circular(16),
       border: Border.all(
@@ -290,35 +376,6 @@ Widget _buildPredictionSection(RiskState state) {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF9500).withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.timeline,
-                color: Color(0xFFFF9500),
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'PREDICTED OUTLOOK',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFFFF9500),
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
         _predictionRow(
           'Risk Level',
           state.predictedRisk!.toUpperCase(),
@@ -334,33 +391,6 @@ Widget _buildPredictionSection(RiskState state) {
           '${(state.predictedRadius! / 1000).toStringAsFixed(1)} km radius',
           const Color(0xFF5856D6),
         ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.info_outline,
-                color: Colors.grey.shade600,
-                size: 16,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  getPredictionExplanation(),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ],
     ),
   );
@@ -375,18 +405,12 @@ Widget _predictionRow(String label, String value, Color color) {
           width: 8,
           height: 8,
           margin: const EdgeInsets.only(right: 12),
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         Expanded(
           child: Text(
             label,
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
           ),
         ),
         Text(
@@ -403,6 +427,11 @@ Widget _predictionRow(String label, String value, Color color) {
 }
 
 String _formatTime(DateTime time) {
-  return '${time.hour.toString().padLeft(2, '0')}:'
-      '${time.minute.toString().padLeft(2, '0')}';
+  return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+}
+
+bool _hasAnyMetrics(RiskState state) {
+  return state.rainfallLast24h != null ||
+      state.forecastRain6h != null ||
+      state.riverDischarge != null;
 }
