@@ -18,92 +18,74 @@ class UserLocationMarker extends StatelessWidget {
       markers: [
         Marker(
           point: location,
-          width: 80,
-          height: 80,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Outer pulse ring
-              AnimatedBuilder(
-                animation: pulseAnimation,
-                builder: (context, child) {
-                  return Transform.scale(
-                    scale: 1 + pulseAnimation.value * 0.6,
-                    child: Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            const Color(0xFF007AFF).withValues(
-                              alpha: 0.3 * (1 - pulseAnimation.value),
-                            ),
-                            const Color(0xFF007AFF)
-                                .withValues(alpha: 0),
-                          ],
-                          stops: const [0.1, 1.0],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
+          width: 90,
+          height: 90,
+          child: AnimatedBuilder(
+            animation: pulseAnimation,
+            builder: (context, _) {
+              final t = pulseAnimation.value;
 
-              // Middle pulse ring
-              AnimatedBuilder(
-                animation: pulseAnimation,
-                builder: (context, child) {
-                  return Transform.scale(
-                    scale: 1 + pulseAnimation.value * 0.4,
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFF007AFF).withValues(
-                          alpha: 0.2 * (1 - pulseAnimation.value),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-
-              // Location pin
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      Color(0xFF007AFF),
-                      Color(0xFF5856D6),
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  // 🌊 Expanding radar wave
+                  Container(
+                    width: 70 + t * 30,
+                    height: 70 + t * 30,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
                       color: const Color(0xFF007AFF)
-                          .withValues(alpha: 0.5),
-                      blurRadius: 10,
-                      spreadRadius: 2,
+                          .withValues(alpha: (1 - t) * 0.12),
                     ),
-                  ],
-                  border: Border.all(
-                    color: Colors.white,
-                    width: 3,
                   ),
-                ),
-                child: const Icon(
-                  Icons.navigation,
-                  color: Colors.white,
-                  size: 16,
-                ),
-              ),
-            ],
+
+                  // 🌀 Rotating orbit ring
+                  Transform.rotate(
+                    angle: t * 2 * pi,
+                    child: Container(
+                      width: 54,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFF5AC8FA)
+                              .withValues(alpha: 0.6),
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // 🔵 Core glow
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF007AFF),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF007AFF)
+                              .withValues(alpha: 0.6),
+                          blurRadius: 12,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // 📍 Inner dot
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ],

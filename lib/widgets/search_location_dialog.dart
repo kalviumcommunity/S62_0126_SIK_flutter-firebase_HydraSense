@@ -100,20 +100,24 @@ Future<Map<String, dynamic>?> showSearchLocationDialog(
                                         const TextStyle(fontSize: 16),
                                     onChanged: (value) {
                                       debounce?.cancel();
+
                                       debounce = Timer(
                                         const Duration(milliseconds: 350),
                                         () async {
-                                          if (value.isEmpty) {
-                                            setState(
-                                                () => suggestions = []);
+                                          final currentQuery = value;
+
+                                          if (currentQuery.isEmpty) {
+                                            setState(() => suggestions = []);
                                             return;
                                           }
+
                                           final result =
-                                              await locationService
-                                                  .getPlaceSuggestions(
-                                                      value);
-                                          setState(
-                                              () => suggestions = result);
+                                              await locationService.getPlaceSuggestions(currentQuery);
+
+                                          // 🛑 Prevent old results overriding new ones
+                                          if (controller.text != currentQuery) return;
+
+                                          setState(() => suggestions = result);
                                         },
                                       );
                                     },

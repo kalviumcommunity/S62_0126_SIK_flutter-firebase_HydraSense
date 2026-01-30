@@ -31,6 +31,11 @@ const PORT = 3000;
 
 app.use(express.json());
 app.use('/api', require('./api/userSafety'));
+app.post(
+  '/api/check-location-risk',
+  require('./api/locationRisk')
+);
+
 
 app.get('/', (req, res) => {
   res.send(`HydraSense backend — monitoring ${DISTRICTS.length} districts`);

@@ -1,22 +1,17 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
-import '../utils/rate_limiter.dart';
 
 class LocationService {
-  final RateLimiter _searchLimiter = RateLimiter(const Duration(seconds: 1));
 
   Future<Position?> getCurrentLocation() async {
     try {
-      // 1️⃣ Check if location services are enabled
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        // print('❌ Location services disabled');
-        return null;
-      }
+      final serviceEnabled =
+          await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return null;
 
-      // 2️⃣ Check & request permission
-      LocationPermission permission = await Geolocator.checkPermission();
+      LocationPermission permission =
+          await Geolocator.checkPermission();
 
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -24,47 +19,45 @@ class LocationService {
 
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        // print('❌ Location permission denied');
         return null;
       }
 
-      // 3️⃣ Try last known position (FAST, reliable)
-      final lastKnown = await Geolocator.getLastKnownPosition();
-      if (lastKnown != null) {
-        // print('📍 Using last known location');
-        return lastKnown;
-      }
+      final lastKnown =
+          await Geolocator.getLastKnownPosition();
 
-      // 4️⃣ Fallback: request current position
-      // print('📡 Requesting current GPS fix...');
+      if (lastKnown != null) return lastKnown;
+
       return await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.medium,
       );
-    } catch (e) {
-      // print('❌ Location error: $e');
+    } catch (_) {
       return null;
     }
   }
 
+  /// 🔍 REAL search – buildings, landmarks, addresses
   Future<List<Map<String, dynamic>>> getPlaceSuggestions(String query) async {
-    if (query.trim().length < 3) return [];
-    if (!_searchLimiter.shouldAllow()) return [];
+    final q = query.trim();
+    if (q.length < 3) return [];
 
     final url = Uri.https(
       'nominatim.openstreetmap.org',
       '/search',
       {
-        'q': query,
-        'format': 'json',
+        'q': q,
+        'format': 'jsonv2',
         'addressdetails': '1',
-        'limit': '3',
+        'namedetails': '1',
+        'limit': '10',
       },
     );
 
     try {
       final response = await http.get(
         url,
-        headers: {'User-Agent': 'HydraSense/1.0'},
+        headers: {
+          'User-Agent': 'HydraSense/1.0 (contact: dev@hydrasense.app)',
+        },
       );
 
       if (response.statusCode != 200) return [];
@@ -72,8 +65,21 @@ class LocationService {
       final List data = json.decode(response.body);
 
       return data.map<Map<String, dynamic>>((item) {
+        final address = item['address'] ?? {};
+
+        final subtitle = [
+          address['road'],
+          address['suburb'],
+          address['city'] ??
+              address['town'] ??
+              address['village'],
+          address['state'],
+        ].where((e) => e != null).join(', ');
+
         return {
-          'display': item['display_name'],
+          'display': item['namedetails']?['name'] ??
+              item['display_name'],
+          'address': subtitle,
           'lat': double.parse(item['lat']),
           'lon': double.parse(item['lon']),
         };

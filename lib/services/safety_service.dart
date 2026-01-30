@@ -17,6 +17,8 @@ class SafetyCheckResult {
   final double confidence;
   final String? userDistrict;
   final String? userRisk;
+  final String? predictedRisk;
+  final int? predictionWindow;
 
   SafetyCheckResult({
     required this.isInDanger,
@@ -25,10 +27,13 @@ class SafetyCheckResult {
     this.confidence = 0,
     this.userDistrict,
     this.userRisk,
+    this.predictedRisk,
+    this.predictionWindow,
   });
 
   factory SafetyCheckResult.fromJson(Map<String, dynamic> json) {
-    final statusStr = (json['status'] as String?)?.toUpperCase() ?? 'UNKNOWN';
+    final statusStr =
+        (json['status'] as String?)?.toUpperCase() ?? 'UNKNOWN';
 
     SafetyStatus status = SafetyStatus.unknown;
     String? userRisk;
@@ -39,7 +44,7 @@ class SafetyCheckResult {
     } else if (statusStr == 'MODERATE') {
       status = SafetyStatus.moderate;
       userRisk = 'MODERATE';
-    } else if (statusStr == 'DANGER') {
+    } else if (statusStr == 'HIGH' || statusStr == 'DANGER') {
       status = SafetyStatus.inDangerZone;
       userRisk = 'HIGH';
     }
@@ -51,6 +56,8 @@ class SafetyCheckResult {
       confidence: (json['confidence'] ?? 0).toDouble(),
       userDistrict: json['nearestDistrict'],
       userRisk: userRisk,
+      predictedRisk: json['predictedRisk'],
+      predictionWindow: json['predictionWindow'],
     );
   }
 
@@ -72,11 +79,11 @@ class SafetyCheckResult {
 }
 
 class SafetyService {
-  static const String _baseUrl = 'https://s62-0126-sik-flutter-firebase-hydrasense.onrender.com/api';
+  static const String _baseUrl =
+      'https://s62-0126-sik-flutter-firebase-hydrasense.onrender.com/api';
 
   static Future<SafetyCheckResult> checkUserSafety(
     LatLng? location,
-    List<dynamic> ignored,
   ) async {
     if (location == null) {
       return SafetyCheckResult.locationUnavailable();
@@ -93,13 +100,37 @@ class SafetyService {
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Backend error ${response.statusCode}');
+        throw Exception('Backend error');
       }
 
       final data = jsonDecode(response.body);
       return SafetyCheckResult.fromJson(data);
-    } catch (e) {
-      // print('❌ Safety check failed: $e');
+    } catch (_) {
+      return SafetyCheckResult.unknownError();
+    }
+  }
+
+  static Future<SafetyCheckResult> checkLocationRisk(
+    LatLng location,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/check-location-risk'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'lat': location.latitude,
+          'lng': location.longitude,
+          'radiusKm': 0.5,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Backend error');
+      }
+
+      final data = jsonDecode(response.body);
+      return SafetyCheckResult.fromJson(data);
+    } catch (_) {
       return SafetyCheckResult.unknownError();
     }
   }
