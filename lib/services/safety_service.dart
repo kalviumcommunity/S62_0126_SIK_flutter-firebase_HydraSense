@@ -36,36 +36,45 @@ class SafetyCheckResult {
   });
 
   factory SafetyCheckResult.fromJson(Map<String, dynamic> json) {
-    final statusStr =
-        (json['status'] as String?)?.toUpperCase() ?? 'UNKNOWN';
+  final statusStr = (json['status'] as String?)?.toUpperCase() ?? 'UNKNOWN';
 
-    SafetyStatus status = SafetyStatus.unknown;
-    String? userRisk;
+  SafetyStatus status = SafetyStatus.unknown;
+  String? userRisk;
 
-    if (statusStr == 'SAFE') {
-      status = SafetyStatus.safe;
-      userRisk = 'LOW';
-    } else if (statusStr == 'MODERATE') {
-      status = SafetyStatus.moderate;
-      userRisk = 'MODERATE';
-    } else if (statusStr == 'HIGH' || statusStr == 'DANGER') {
-      status = SafetyStatus.inDangerZone;
-      userRisk = 'HIGH';
-    }
-
-    return SafetyCheckResult(
-      isInDanger: status == SafetyStatus.inDangerZone,
-      status: status,
-      message: json['message'] ?? 'Safety status unavailable',
-      confidence: (json['confidence'] ?? 0).toDouble(),
-      userDistrict: json['nearestDistrict'] ?? json['userDistrict'],
-      userRisk: userRisk,
-      predictedRisk: json['predictedRisk'],
-      predictionWindow: json['predictionWindow'],
-      currentRadius: (json['currentRadius'] as num?)?.toDouble(),
-      metrics: json['metrics'] as Map<String, dynamic>?,
-    );
+  if (statusStr == 'SAFE' || statusStr == 'LOW') {  // ADD 'LOW' HERE
+    status = SafetyStatus.safe;
+    userRisk = 'LOW';
+  } else if (statusStr == 'MODERATE') {
+    status = SafetyStatus.moderate;
+    userRisk = 'MODERATE';
+  } else if (statusStr == 'HIGH' || statusStr == 'DANGER') {
+    status = SafetyStatus.inDangerZone;
+    userRisk = 'HIGH';
   }
+
+  final String? districtField = json['nearestDistrict'] ?? json['userDistrict'];
+  final userDistrict = (districtField == 'SEARCHED LOCATION' || districtField == null) 
+                    ? 'SEARCHED LOCATION' 
+                    : districtField;
+
+  // print('🔍 SAFETY SERVICE DEBUG:');
+  // print('  Backend nearestDistrict = ${json['nearestDistrict']}');
+  // print('  Final userDistrict = $userDistrict');
+  // print('  Risk = $userRisk');
+
+  return SafetyCheckResult(
+    isInDanger: status == SafetyStatus.inDangerZone,
+    status: status,
+    message: json['message'] ?? 'Safety status unavailable',
+    confidence: (json['confidence'] ?? 0).toDouble(),
+    userDistrict: userDistrict,
+    userRisk: userRisk,
+    predictedRisk: json['predictedRisk'],
+    predictionWindow: json['predictionWindow'],
+    currentRadius: (json['currentRadius'] as num?)?.toDouble(),
+    metrics: json['metrics'] as Map<String, dynamic>?,
+  );
+}
 
   factory SafetyCheckResult.locationUnavailable() {
     return SafetyCheckResult(
@@ -120,6 +129,8 @@ class SafetyService {
     LatLng location,
   ) async {
     try {
+      // print('📍 SENDING SEARCH REQUEST for ${location.latitude}, ${location.longitude}');
+      
       final response = await http.post(
         Uri.parse('$_baseUrl/check-location-risk'),
         headers: {'Content-Type': 'application/json'},
@@ -130,11 +141,15 @@ class SafetyService {
         }),
       );
 
+      // print('📍 SEARCH RESPONSE status: ${response.statusCode}');
+
       if (response.statusCode != 200) {
         throw Exception('Backend error');
       }
 
       final data = jsonDecode(response.body);
+      // print('📍 SEARCH RESPONSE data: ${data['nearestDistrict']}');
+      
       return SafetyCheckResult.fromJson(data);
     } catch (_) {
       return SafetyCheckResult.unknownError();

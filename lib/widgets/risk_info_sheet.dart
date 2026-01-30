@@ -6,6 +6,11 @@ void showRiskInfoSheet({
   required BuildContext context,
   required RiskState state,
 }) {
+  // print('📋 RISK INFO SHEET OPENED:');
+  // print('  districtId = ${state.districtId}');
+  // print('  currentRisk = ${state.currentRisk}');
+  // print('  center = ${state.centerLat}, ${state.centerLng}');
+
   final now = DateTime.now();
   final predictionValid = state.predictionExpiresAt != null &&
       now.isBefore(state.predictionExpiresAt!);

@@ -151,8 +151,15 @@ class _MapScreenState extends State<MapScreen>
       _searchedRiskRadius = null;
     });
 
+    // print('🔍 SEARCH STARTED: ${latLng.latitude}, ${latLng.longitude}');
+    
     final result = await SafetyService.checkLocationRisk(latLng);
     if (!mounted) return;
+
+    // print('🔍 SEARCH RESULT RECEIVED:');
+          // print('  userDistrict = ${result.userDistrict}');
+    // print('  currentRisk = ${result.userRisk}');
+      // print('  confidence = ${result.confidence}');
 
     setState(() {
       _safetyResult = result;
@@ -176,7 +183,13 @@ class _MapScreenState extends State<MapScreen>
           maxRainProb: (result.metrics?['maxRainProb'] as num?)?.toDouble(),
           riverDischarge: (result.metrics?['riverDischarge'] as num?)?.toDouble(),
         );
+        
+        // print('🔍 CREATING RiskState with districtId = ${searchState.districtId}');
+        // print('🔍 CREATING RiskState with currentRisk = ${searchState.currentRisk}');
+        
         context.read<RiskStateProvider>().setSearchedRiskState(searchState);
+      } else {
+        print('🔍 NO USER RISK IN RESULT');
       }
     });
 
@@ -306,7 +319,7 @@ class _MapScreenState extends State<MapScreen>
         _buildFloodZones(),
         Consumer<RiskStateProvider>(
           builder: (_, provider, _) {
-            if (provider.isShowingSearch) return const SizedBox();
+            // if (provider.isShowingSearch) return const SizedBox();
             return _buildZoneMarkers();
           },
         ),
@@ -328,7 +341,7 @@ class _MapScreenState extends State<MapScreen>
           _updateSafetyCheck(provider.riskStates);
         });
 
-        if (provider.isShowingSearch) return const SizedBox();
+        // if (provider.isShowingSearch) return const SizedBox();
 
         return Stack(
           children: provider.riskStates.map((state) {
