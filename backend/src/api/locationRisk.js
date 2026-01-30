@@ -58,6 +58,7 @@ module.exports = async function checkLocationRisk(req, res) {
           predictedRisk: d.predictedRisk,
           predictionWindow: d.predictionWindow,
           confidence: d.confidence,
+          currentRadius: d.currentRadius,
         };
       }
     });
@@ -78,6 +79,7 @@ module.exports = async function checkLocationRisk(req, res) {
       predictedRisk: best.predictedRisk,
       predictionWindow: best.predictionWindow,
       confidence: best.confidence ?? 0,
+      currentRadius: best.currentRadius,
     });
   } catch (e) {
     console.error(e);
