@@ -17,7 +17,7 @@ module.exports = async function checkLocationRisk(req, res) {
       return res.status(400).json({ error: 'lat/lng required' });
     }
 
-    console.log('CHECK LOCATION REQUEST:', { lat, lng, radiusKm });
+    // console.log('CHECK LOCATION REQUEST:', { lat, lng, radiusKm });
 
     const snap = await db.collection('risk_states').get();
 
@@ -75,7 +75,7 @@ module.exports = async function checkLocationRisk(req, res) {
     });
 
     if (!best && nearest) {
-      console.log('CHECK LOCATION FALLBACK → NEAREST DISTRICT:', nearest.districtId);
+      // console.log('CHECK LOCATION FALLBACK → NEAREST DISTRICT:', nearest.districtId);
 
       return res.json({
         isInDanger: false,
@@ -91,7 +91,7 @@ module.exports = async function checkLocationRisk(req, res) {
     }
 
     if (!best) {
-      console.log('CHECK LOCATION RESULT: SAFE (no data)');
+      // console.log('CHECK LOCATION RESULT: SAFE (no data)');
       return res.json({
         isInDanger: false,
         status: 'SAFE',
@@ -99,7 +99,7 @@ module.exports = async function checkLocationRisk(req, res) {
       });
     }
 
-    console.log('CHECK LOCATION RESPONSE METRICS:', best.metrics);
+    // console.log('CHECK LOCATION RESPONSE METRICS:', best.metrics);
 
     return res.json({
       isInDanger: best.effectiveRisk === 'HIGH',
@@ -113,7 +113,7 @@ module.exports = async function checkLocationRisk(req, res) {
       metrics: best.metrics,
     });
   } catch (e) {
-    console.error('CHECK LOCATION ERROR:', e);
+    // console.error('CHECK LOCATION ERROR:', e);
     res.status(500).json({ error: 'Risk check failed' });
   }
 };

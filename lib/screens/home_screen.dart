@@ -7,7 +7,7 @@ import 'dart:async';
 import 'welcomescreen.dart';
 import 'map_screen.dart';
 import 'emergency_screen.dart';
-import 'checklist_screen.dart';
+// import 'checklist_screen.dart';
 import '../state/risk_state_provider.dart';
 import '../models/risk_state.dart';
 import '../services/location_service.dart';
@@ -44,12 +44,12 @@ class _HomeScreenState extends State<HomeScreen> {
           _userLocation = LatLng(position.latitude, position.longitude);
           _isLoading = false;
         });
-        print("Got real location: ${position.latitude}, ${position.longitude}");
+        // print("Got real location: ${position.latitude}, ${position.longitude}");
       } else {
         _useDefaultLocation();
       }
     } catch (e) {
-      print("Location error: $e");
+      // print("Location error: $e");
       _useDefaultLocation();
     }
   }
@@ -62,7 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _isLoading = false;
     });
     
-    print("Using default location: Delhi (28.7041, 77.1025)");
+    // print("Using default location: Delhi (28.7041, 77.1025)");
     
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -266,8 +266,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     final riskState = _findClosestRiskState(riskProvider.riskStates);
                     
                     // Check conditions
-                    final bool isApiHighRisk = riskState?.currentRisk.toLowerCase() == 'high';
-                    final bool isApiModerateRisk = riskState?.currentRisk.toLowerCase() == 'moderate';
+                    // final bool isApiHighRisk = riskState?.currentRisk.toLowerCase() == 'high';
+                    // final bool isApiModerateRisk = riskState?.currentRisk.toLowerCase() == 'moderate';
                     final bool hasUserReportedFlood = _userReportedFlood;
 
                     if (_isLoading) {
@@ -613,7 +613,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     final riskState = _findClosestRiskState(riskProvider.riskStates);
                     final bool isApiHighRisk = riskState?.currentRisk.toLowerCase() == 'high';
                     final bool isApiModerateRisk = riskState?.currentRisk.toLowerCase() == 'moderate';
-                    final bool isApiLowRisk = riskState?.currentRisk.toLowerCase() == 'low';
+                    // final bool isApiLowRisk = riskState?.currentRisk.toLowerCase() == 'low';
                     final bool hasUserReportedFlood = _userReportedFlood;
                     
                     // Show BIG emergency button only for API HIGH risk

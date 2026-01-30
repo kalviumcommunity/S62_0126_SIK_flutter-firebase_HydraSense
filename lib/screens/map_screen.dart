@@ -40,7 +40,10 @@ class _MapScreenState extends State<MapScreen>
   LatLng? _searchedLocation;
 
   double? _searchedRiskRadius;
-  String? _searchedRiskLevel;
+  // String? _searchedRiskLevel;
+  static const double _safeSearchRadius = 5000;
+
+  RiskState? _searchedRiskState;
 
   bool _hasMovedCamera = false;
   bool _showRiskPanel = true;
@@ -66,9 +69,7 @@ class _MapScreenState extends State<MapScreen>
     _panelController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
-    );
-
-    _panelController.forward();
+    )..forward();
 
     _loadUserLocation();
     WidgetsBinding.instance.addObserver(this);
@@ -151,19 +152,52 @@ class _MapScreenState extends State<MapScreen>
     setState(() {
       _searchedLocation = latLng;
       _searchedRiskRadius = null;
-      _searchedRiskLevel = null;
+      // _searchedRiskLevel = null;
+      _searchedRiskState = null;
     });
-
-    _mapController.move(latLng, 12);
 
     final result = await SafetyService.checkLocationRisk(latLng);
     if (!mounted) return;
 
     setState(() {
       _safetyResult = result;
-      _searchedRiskRadius = 500 * 1000;
-      _searchedRiskLevel = result.userRisk ?? 'LOW';
+      _searchedRiskRadius = result.currentRadius;
+      // _searchedRiskLevel = result.userRisk;
+
+      if (result.userRisk != null) {
+      _searchedRiskState = RiskState(
+      districtId: result.userDistrict ?? 'SEARCHED LOCATION',
+      centerLat: latLng.latitude,
+      centerLng: latLng.longitude,
+      currentRadius: result.currentRadius ?? _safeSearchRadius,
+      currentRisk: result.userRisk!,
+      predictedRisk: result.predictedRisk,
+      predictionWindow: result.predictionWindow,
+      confidence: result.confidence,
+      updatedAt: DateTime.now(),
+
+      rainfallLast24h:
+          (result.metrics?['rainfallLast24h'] as num?)?.toDouble(),
+      forecastRain6h:
+          (result.metrics?['forecastRain6h'] as num?)?.toDouble(),
+      forecastRain12h:
+          (result.metrics?['forecastRain12h'] as num?)?.toDouble(),
+      forecastRain24h:
+          (result.metrics?['forecastRain24h'] as num?)?.toDouble(),
+      maxRainProb:
+          (result.metrics?['maxRainProb'] as num?)?.toDouble(),
+      riverDischarge:
+          (result.metrics?['riverDischarge'] as num?)?.toDouble(),
+    );
+    }
     });
+
+    final zoom =
+        (_searchedRiskRadius != null && _searchedRiskRadius! > 3000)
+            ? 11.0
+            : 14.0;
+
+    _mapController.move(latLng, zoom);
   }
 
   void _goToMyLocation() {
@@ -272,13 +306,24 @@ class _MapScreenState extends State<MapScreen>
           subdomains: const ['a', 'b', 'c'],
         ),
 
-        if (_searchedLocation != null && _searchedRiskRadius != null)
-          FloodZonesLayer(
-            center: _searchedLocation!,
-            currentRadius: _searchedRiskRadius!,
-            predictedRadius: null,
-            color: getRiskColor(_searchedRiskLevel ?? 'LOW'),
-            isSelected: true,
+        if (_searchedRiskState != null)
+          GestureDetector(
+            onTap: () {
+              showRiskInfoSheet(
+                context: context,
+                state: _searchedRiskState!,
+              );
+            },
+            child: FloodZonesLayer(
+              center: LatLng(
+                _searchedRiskState!.centerLat,
+                _searchedRiskState!.centerLng,
+              ),
+              currentRadius: _searchedRiskState!.currentRadius,
+              predictedRadius: _searchedRiskState!.predictedRadius,
+              color: getRiskColor(_searchedRiskState!.currentRisk),
+              isSelected: true,
+            ),
           ),
 
         _buildFloodZones(),
@@ -304,7 +349,7 @@ class _MapScreenState extends State<MapScreen>
         });
 
         return IgnorePointer(
-          ignoring: true,
+          ignoring: false,
           child: Stack(
             children: provider.riskStates.map((state) {
               final isSelected =

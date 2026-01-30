@@ -19,6 +19,8 @@ class SafetyCheckResult {
   final String? userRisk;
   final String? predictedRisk;
   final int? predictionWindow;
+  final double? currentRadius;
+  final Map<String, dynamic>? metrics;
 
   SafetyCheckResult({
     required this.isInDanger,
@@ -29,6 +31,8 @@ class SafetyCheckResult {
     this.userRisk,
     this.predictedRisk,
     this.predictionWindow,
+    this.currentRadius,
+    this.metrics,
   });
 
   factory SafetyCheckResult.fromJson(Map<String, dynamic> json) {
@@ -58,6 +62,8 @@ class SafetyCheckResult {
       userRisk: userRisk,
       predictedRisk: json['predictedRisk'],
       predictionWindow: json['predictionWindow'],
+      currentRadius: (json['currentRadius'] as num?)?.toDouble(),
+      metrics: json['metrics'] as Map<String, dynamic>?,
     );
   }
 
@@ -120,7 +126,7 @@ class SafetyService {
         body: jsonEncode({
           'lat': location.latitude,
           'lng': location.longitude,
-          'radiusKm': 0.5,
+          'radiusKm': 5,
         }),
       );
 
