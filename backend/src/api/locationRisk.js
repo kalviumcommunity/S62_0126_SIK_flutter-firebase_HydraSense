@@ -1,7 +1,5 @@
 const admin = require('firebase-admin');
 const { haversineKm } = require('../utils/distance');
-const { fetchRainfall } = require('../weather');
-const { computeFloodStatus } = require('../floodLogic');
 
 const db = admin.firestore();
 
@@ -65,37 +63,23 @@ module.exports = async function checkLocationRisk(req, res) {
       }
     });
 
-    const weather = await fetchRainfall(lat, lng);
-
-    const flood = computeFloodStatus({
-      maxRainIntensity1h: weather.maxRainIntensity1h,
-      rainfallLast24h: weather.rainfallLast24h,
-      riverDischarge: null,
-      previousState: null,
-      districtId: 'SEARCH',
-    });
+    if (!best) {
+      return res.json({
+        isInDanger: false,
+        status: 'SAFE',
+        message: 'No flood risk detected nearby',
+      });
+    }
 
     return res.json({
-      isInDanger: flood.currentRisk === 'HIGH',
-      status: flood.currentRisk,
-
-      nearestDistrict: best?.districtId ?? null,
-
-      currentRisk: flood.currentRisk,
-      currentRadius: flood.currentRadius * 1000, // km → meters
-      confidence: flood.confidence,
-
-      metrics: {
-        rainfallLast24h: weather.rainfallLast24h,
-        maxRainIntensity1h: weather.maxRainIntensity1h,
-
-        currentRainProb: weather.currentRainProb,
-        forecastRainProb: weather.forecastRainProb,
-
-        forecastRain6h: weather.forecastRain6h,
-        forecastRain12h: weather.forecastRain12h,
-        forecastRain24h: weather.forecastRain24h,
-      },
+      isInDanger: best.effectiveRisk === 'HIGH',
+      status: best.effectiveRisk,
+      nearestDistrict: best.districtId,
+      currentRisk: best.currentRisk,
+      predictedRisk: best.predictedRisk,
+      predictionWindow: best.predictionWindow,
+      confidence: best.confidence ?? 0,
+      currentRadius: best.currentRadius,
     });
   } catch (e) {
     console.error(e);
