@@ -58,7 +58,7 @@ class SafetyCheckResult {
       status: status,
       message: json['message'] ?? 'Safety status unavailable',
       confidence: (json['confidence'] ?? 0).toDouble(),
-      userDistrict: json['nearestDistrict'],
+      userDistrict: json['nearestDistrict'] ?? json['userDistrict'],
       userRisk: userRisk,
       predictedRisk: json['predictedRisk'],
       predictionWindow: json['predictionWindow'],

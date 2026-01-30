@@ -38,12 +38,8 @@ class _MapScreenState extends State<MapScreen>
 
   LatLng? _userLocation;
   LatLng? _searchedLocation;
-
   double? _searchedRiskRadius;
-  // String? _searchedRiskLevel;
   static const double _safeSearchRadius = 5000;
-
-  RiskState? _searchedRiskState;
 
   bool _hasMovedCamera = false;
   bool _showRiskPanel = true;
@@ -121,8 +117,7 @@ class _MapScreenState extends State<MapScreen>
 
     _checkingSafety = true;
 
-    final result =
-        await SafetyService.checkUserSafety(_userLocation);
+    final result = await SafetyService.checkUserSafety(_userLocation);
 
     if (mounted) {
       setState(() => _safetyResult = result);
@@ -132,6 +127,7 @@ class _MapScreenState extends State<MapScreen>
   }
 
   void _onFloodZoneTap(RiskState state) {
+    context.read<RiskStateProvider>().clearSearch();
     context.read<RiskStateProvider>().selectZone(state);
 
     final center = LatLng(state.centerLat, state.centerLng);
@@ -146,14 +142,13 @@ class _MapScreenState extends State<MapScreen>
   Future<void> _openSearchDialog() async {
     final place = await showSearchLocationDialog(context);
     if (place == null) return;
+    context.read<RiskStateProvider>().clearSelection();
 
     final latLng = LatLng(place['lat'], place['lon']);
 
     setState(() {
       _searchedLocation = latLng;
       _searchedRiskRadius = null;
-      // _searchedRiskLevel = null;
-      _searchedRiskState = null;
     });
 
     final result = await SafetyService.checkLocationRisk(latLng);
@@ -162,46 +157,39 @@ class _MapScreenState extends State<MapScreen>
     setState(() {
       _safetyResult = result;
       _searchedRiskRadius = result.currentRadius;
-      // _searchedRiskLevel = result.userRisk;
 
       if (result.userRisk != null) {
-      _searchedRiskState = RiskState(
-      districtId: result.userDistrict ?? 'SEARCHED LOCATION',
-      centerLat: latLng.latitude,
-      centerLng: latLng.longitude,
-      currentRadius: result.currentRadius ?? _safeSearchRadius,
-      currentRisk: result.userRisk!,
-      predictedRisk: result.predictedRisk,
-      predictionWindow: result.predictionWindow,
-      confidence: result.confidence,
-      updatedAt: DateTime.now(),
-
-      rainfallLast24h:
-          (result.metrics?['rainfallLast24h'] as num?)?.toDouble(),
-      forecastRain6h:
-          (result.metrics?['forecastRain6h'] as num?)?.toDouble(),
-      forecastRain12h:
-          (result.metrics?['forecastRain12h'] as num?)?.toDouble(),
-      forecastRain24h:
-          (result.metrics?['forecastRain24h'] as num?)?.toDouble(),
-      maxRainProb:
-          (result.metrics?['maxRainProb'] as num?)?.toDouble(),
-      riverDischarge:
-          (result.metrics?['riverDischarge'] as num?)?.toDouble(),
-    );
-    }
+        final searchState = RiskState(
+          districtId: result.userDistrict ?? 'SEARCHED LOCATION',
+          centerLat: latLng.latitude,
+          centerLng: latLng.longitude,
+          currentRadius: result.currentRadius ?? _safeSearchRadius,
+          currentRisk: result.userRisk!,
+          predictedRisk: result.predictedRisk,
+          predictionWindow: result.predictionWindow,
+          confidence: result.confidence,
+          updatedAt: DateTime.now(),
+          rainfallLast24h: (result.metrics?['rainfallLast24h'] as num?)?.toDouble(),
+          forecastRain6h: (result.metrics?['forecastRain6h'] as num?)?.toDouble(),
+          forecastRain12h: (result.metrics?['forecastRain12h'] as num?)?.toDouble(),
+          forecastRain24h: (result.metrics?['forecastRain24h'] as num?)?.toDouble(),
+          maxRainProb: (result.metrics?['maxRainProb'] as num?)?.toDouble(),
+          riverDischarge: (result.metrics?['riverDischarge'] as num?)?.toDouble(),
+        );
+        context.read<RiskStateProvider>().setSearchedRiskState(searchState);
+      }
     });
 
-    final zoom =
-        (_searchedRiskRadius != null && _searchedRiskRadius! > 3000)
-            ? 11.0
-            : 14.0;
+    final zoom = (_searchedRiskRadius != null && _searchedRiskRadius! > 3000)
+        ? 11.0
+        : 14.0;
 
     _mapController.move(latLng, zoom);
   }
 
   void _goToMyLocation() {
     if (_userLocation != null) {
+      context.read<RiskStateProvider>().clearSearch();
       _mapController.move(_userLocation!, 13);
     }
   }
@@ -247,38 +235,28 @@ class _MapScreenState extends State<MapScreen>
       body: Stack(
         children: [
           _buildMap(),
-
           MapAppBar(
             onSearchTap: _openSearchDialog,
             onMyLocationTap: _goToMyLocation,
             onRiskPanelToggle: _toggleRiskPanel,
             showPanel: _showRiskPanel,
           ),
-
           Consumer<RiskStateProvider>(
             builder: (_, provider, _) {
-              final prediction =
-                  _getRelevantPrediction(provider.riskStates);
-
+              final prediction = _getRelevantPrediction(provider.riskStates);
               if (prediction == null) return const SizedBox();
-
               return PredictionWarningBanner(
-                message:
-                    'Possible flood expansion near you in '
-                    '${prediction.predictionWindow} hours',
+                message: 'Possible flood expansion near you in ${prediction.predictionWindow} hours',
                 onTap: () {
+                  context.read<RiskStateProvider>().clearSearch();
                   _mapController.move(
-                    LatLng(
-                      prediction.centerLat,
-                      prediction.centerLng,
-                    ),
+                    LatLng(prediction.centerLat, prediction.centerLng),
                     12,
                   );
                 },
               );
             },
           ),
-
           if (_showRiskPanel) _buildRiskPanel(),
           if (_safetyResult.isInDanger) _buildSafetyAlert(),
           _buildSafetyStatus(),
@@ -305,33 +283,35 @@ class _MapScreenState extends State<MapScreen>
               'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
           subdomains: const ['a', 'b', 'c'],
         ),
-
-        if (_searchedRiskState != null)
-          GestureDetector(
-            onTap: () {
-              showRiskInfoSheet(
-                context: context,
-                state: _searchedRiskState!,
+        Consumer<RiskStateProvider>(
+          builder: (_, provider, _) {
+            final searchState = provider.searchedRiskState;
+            if (searchState != null) {
+              return GestureDetector(
+                onTap: () {
+                  showRiskInfoSheet(context: context, state: searchState);
+                },
+                child: FloodZonesLayer(
+                  center: LatLng(searchState.centerLat, searchState.centerLng),
+                  currentRadius: searchState.currentRadius,
+                  predictedRadius: searchState.predictedRadius,
+                  color: getRiskColor(searchState.currentRisk),
+                  isSelected: true,
+                ),
               );
-            },
-            child: FloodZonesLayer(
-              center: LatLng(
-                _searchedRiskState!.centerLat,
-                _searchedRiskState!.centerLng,
-              ),
-              currentRadius: _searchedRiskState!.currentRadius,
-              predictedRadius: _searchedRiskState!.predictedRadius,
-              color: getRiskColor(_searchedRiskState!.currentRisk),
-              isSelected: true,
-            ),
-          ),
-
+            }
+            return const SizedBox();
+          },
+        ),
         _buildFloodZones(),
-        _buildZoneMarkers(),
-
+        Consumer<RiskStateProvider>(
+          builder: (_, provider, _) {
+            if (provider.isShowingSearch) return const SizedBox();
+            return _buildZoneMarkers();
+          },
+        ),
         if (_searchedLocation != null)
           SearchLocationMarker(location: _searchedLocation!),
-
         if (_userLocation != null)
           UserLocationMarker(
             location: _userLocation!,
@@ -348,22 +328,19 @@ class _MapScreenState extends State<MapScreen>
           _updateSafetyCheck(provider.riskStates);
         });
 
-        return IgnorePointer(
-          ignoring: false,
-          child: Stack(
-            children: provider.riskStates.map((state) {
-              final isSelected =
-                  provider.selectedZone?.districtId == state.districtId;
+        if (provider.isShowingSearch) return const SizedBox();
 
-              return FloodZonesLayer(
-                center: LatLng(state.centerLat, state.centerLng),
-                currentRadius: state.currentRadius,
-                predictedRadius: state.predictedRadius,
-                color: getRiskColor(state.currentRisk),
-                isSelected: isSelected,
-              );
-            }).toList(),
-          ),
+        return Stack(
+          children: provider.riskStates.map((state) {
+            final isSelected = provider.selectedZone?.districtId == state.districtId;
+            return FloodZonesLayer(
+              center: LatLng(state.centerLat, state.centerLng),
+              currentRadius: state.currentRadius,
+              predictedRadius: state.predictedRadius,
+              color: getRiskColor(state.currentRisk),
+              isSelected: isSelected,
+            );
+          }).toList(),
         );
       },
     );
@@ -395,20 +372,20 @@ class _MapScreenState extends State<MapScreen>
   Widget _buildRiskPanel() {
     return Consumer<RiskStateProvider>(
       builder: (_, provider, _) {
-        if (provider.riskStates.isEmpty) return const SizedBox();
-        final risk = provider.riskStates.first;
+        final displayState = provider.displayRiskState;
+        if (displayState == null) return const SizedBox();
 
         return Positioned(
           bottom: 20,
           left: 16,
           right: 16,
           child: RiskPanel(
-            title: 'Flood Risk: ${risk.currentRisk}',
-            subtitle: risk.predictedRisk != null
-                ? 'Predicted to increase in ${risk.predictionWindow} hrs'
+            title: 'Flood Risk: ${displayState.currentRisk}',
+            subtitle: displayState.predictedRisk != null
+                ? 'Predicted to increase in ${displayState.predictionWindow} hrs'
                 : 'No immediate escalation predicted',
-            riskColor: getRiskColor(risk.currentRisk),
-            riskIcon: getRiskIcon(risk.currentRisk),
+            riskColor: getRiskColor(displayState.currentRisk),
+            riskIcon: getRiskIcon(displayState.currentRisk),
             onClose: _toggleRiskPanel,
           ),
         );

@@ -5,25 +5,38 @@ import '../services/risk_firestore_service.dart';
 
 class RiskStateProvider extends ChangeNotifier {
   final RiskFirestoreService _firestoreService;
+  
   RiskState? _selectedZone;
   RiskState? get selectedZone => _selectedZone;
+  
+  List<RiskState> _riskStates = [];
+  List<RiskState> get riskStates => _riskStates;
+  
+  RiskState? _searchedRiskState;
+  RiskState? get searchedRiskState => _searchedRiskState;
+  
+  bool _isLoading = true;
+  bool get isLoading => _isLoading;
+  
+  String? _error;
+  String? get error => _error;
+  
+  StreamSubscription<List<RiskState>>? _subscription;
+  Timer? _retryTimer;
+  
+  int _retryDelay = 2;
+  bool _isListening = false;
 
   RiskStateProvider(this._firestoreService);
 
-  List<RiskState> _riskStates = [];
-  List<RiskState> get riskStates => _riskStates;
+  bool get isShowingSearch => _searchedRiskState != null;
 
-  bool _isLoading = true;
-  bool get isLoading => _isLoading;
-
-  String? _error;
-  String? get error => _error;
-
-  StreamSubscription<List<RiskState>>? _subscription;
-  Timer? _retryTimer;
-
-  int _retryDelay = 2;
-  bool _isListening = false;
+  RiskState? get displayRiskState {
+    if (_searchedRiskState != null) return _searchedRiskState;
+    if (_selectedZone != null) return _selectedZone;
+    if (_riskStates.isNotEmpty) return _riskStates.first;
+    return null;
+  }
 
   void selectZone(RiskState zone) {
     _selectedZone = zone;
@@ -32,6 +45,16 @@ class RiskStateProvider extends ChangeNotifier {
 
   void clearSelection() {
     _selectedZone = null;
+    notifyListeners();
+  }
+
+  void setSearchedRiskState(RiskState? state) {
+    _searchedRiskState = state;
+    notifyListeners();
+  }
+
+  void clearSearch() {
+    _searchedRiskState = null;
     notifyListeners();
   }
 
@@ -50,17 +73,25 @@ class RiskStateProvider extends ChangeNotifier {
 
         if (!_listsAreEqual(_riskStates, states)) {
           _riskStates = states;
+          
+          if (_selectedZone != null) {
+            final match = _riskStates.where(
+              (s) => s.districtId == _selectedZone!.districtId,
+            );
+            if (match.isNotEmpty) {
+              _selectedZone = match.first;
+            }
+          }
+          
           notifyListeners();
         }
       },
       onError: (e) {
         _error = e.toString();
         _isLoading = false;
-
         _subscription?.cancel();
         _subscription = null;
         _isListening = false;
-
         _scheduleRetry();
         notifyListeners();
       },
@@ -70,10 +101,8 @@ class RiskStateProvider extends ChangeNotifier {
   void pauseListening() {
     _retryTimer?.cancel();
     _retryTimer = null;
-
     _subscription?.cancel();
     _subscription = null;
-
     _isListening = false;
   }
 
