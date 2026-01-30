@@ -22,16 +22,13 @@ module.exports = async function checkLocationRisk(req, res) {
     const snap = await db.collection('risk_states').get();
 
     let best = null;
+    let nearest = null;
+    let nearestDist = Infinity;
+
     const now = Date.now();
 
     snap.forEach(doc => {
       const d = doc.data();
-
-      console.log('RISK STATE DOC:', {
-        districtId: d.districtId,
-        hasMetrics: !!d.metrics,
-        metrics: d.metrics,
-      });
 
       const dist = haversineKm(
         lat,
@@ -39,6 +36,11 @@ module.exports = async function checkLocationRisk(req, res) {
         d.centerLat,
         d.centerLng
       );
+
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearest = d;
+      }
 
       if (dist > radiusKm) return;
 
@@ -72,8 +74,24 @@ module.exports = async function checkLocationRisk(req, res) {
       }
     });
 
+    if (!best && nearest) {
+      console.log('CHECK LOCATION FALLBACK → NEAREST DISTRICT:', nearest.districtId);
+
+      return res.json({
+        isInDanger: false,
+        status: 'SAFE',
+        nearestDistrict: nearest.districtId,
+        currentRisk: nearest.currentRisk,
+        predictedRisk: nearest.predictedRisk ?? null,
+        predictionWindow: nearest.predictionWindow ?? null,
+        confidence: nearest.confidence ?? 0,
+        currentRadius: nearest.currentRadius,
+        metrics: nearest.metrics ?? null,
+      });
+    }
+
     if (!best) {
-      console.log('CHECK LOCATION RESULT: SAFE (no matching districts)');
+      console.log('CHECK LOCATION RESULT: SAFE (no data)');
       return res.json({
         isInDanger: false,
         status: 'SAFE',
