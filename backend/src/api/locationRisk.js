@@ -11,11 +11,13 @@ function riskRank(risk) {
 
 module.exports = async function checkLocationRisk(req, res) {
   try {
-    const { lat, lng, radiusKm = 50 } = req.body;
+    const { lat, lng, radiusKm = 25 } = req.body;
 
     if (lat == null || lng == null) {
       return res.status(400).json({ error: 'lat/lng required' });
     }
+
+    console.log('CHECK LOCATION REQUEST:', { lat, lng, radiusKm });
 
     const snap = await db.collection('risk_states').get();
 
@@ -24,6 +26,12 @@ module.exports = async function checkLocationRisk(req, res) {
 
     snap.forEach(doc => {
       const d = doc.data();
+
+      console.log('RISK STATE DOC:', {
+        districtId: d.districtId,
+        hasMetrics: !!d.metrics,
+        metrics: d.metrics,
+      });
 
       const dist = haversineKm(
         lat,
@@ -65,12 +73,15 @@ module.exports = async function checkLocationRisk(req, res) {
     });
 
     if (!best) {
+      console.log('CHECK LOCATION RESULT: SAFE (no matching districts)');
       return res.json({
         isInDanger: false,
         status: 'SAFE',
         message: 'No flood risk detected nearby',
       });
     }
+
+    console.log('CHECK LOCATION RESPONSE METRICS:', best.metrics);
 
     return res.json({
       isInDanger: best.effectiveRisk === 'HIGH',
@@ -84,7 +95,7 @@ module.exports = async function checkLocationRisk(req, res) {
       metrics: best.metrics,
     });
   } catch (e) {
-    console.error(e);
+    console.error('CHECK LOCATION ERROR:', e);
     res.status(500).json({ error: 'Risk check failed' });
   }
 };
