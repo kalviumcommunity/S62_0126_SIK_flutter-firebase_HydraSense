@@ -13,7 +13,7 @@ class DemoStateProvider extends ChangeNotifier {
       _userReportedFlood != null || _simulatedPrediction != null;
 
   void reportUserFlood(LatLng location) {
-    print('🧪 DEMO: reportUserFlood at ${location.latitude}, ${location.longitude}');
+    // print('🧪 DEMO: reportUserFlood at ${location.latitude}, ${location.longitude}');
 
     _userReportedFlood = RiskState(
       districtId: 'DEMO_USER_REPORT',
@@ -28,7 +28,7 @@ class DemoStateProvider extends ChangeNotifier {
   }
 
   void simulatePrediction(LatLng location) {
-    print('🧪 DEMO: simulatePrediction at ${location.latitude}, ${location.longitude}');
+    // print('🧪 DEMO: simulatePrediction at ${location.latitude}, ${location.longitude}');
 
     _simulatedPrediction = RiskState(
       districtId: 'DEMO_PREDICTION',
@@ -46,7 +46,7 @@ class DemoStateProvider extends ChangeNotifier {
   }
 
   void clearAllDemos() {
-    print('🧪 DEMO: clearAllDemos');
+    // print('🧪 DEMO: clearAllDemos');
 
     _userReportedFlood = null;
     _simulatedPrediction = null;

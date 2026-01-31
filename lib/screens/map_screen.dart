@@ -23,6 +23,9 @@ import '../widgets/prediction_warning_banner.dart';
 import '../utils/risk_ui_utils.dart';
 import '../utils/distance_utils.dart';
 
+// Import the EmergencyScreen
+import '../screens/emergency_screen.dart';  // Add this import
+
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
 
@@ -36,7 +39,7 @@ class _MapScreenState extends State<MapScreen>
 
   late final AnimationController _pulseController;
   late final AnimationController _panelController;
-
+  
   LatLng? _userLocation;
   LatLng? _searchedLocation;
   double? _searchedRiskRadius;
@@ -126,21 +129,22 @@ class _MapScreenState extends State<MapScreen>
           .firstOrNull;
 
       if (demoState != null && mounted) {
-        setState(() {
-          _safetyResult = SafetyCheckResult(
-            isInDanger: demoState.currentRisk == 'HIGH',
-            status: demoState.currentRisk == 'HIGH'
-                ? SafetyStatus.inDangerZone
-                : SafetyStatus.moderate,
-            message: demoState.currentRisk == 'HIGH'
-                ? 'Severe flood risk detected (simulation)'
-                : 'Moderate flood risk detected (simulation)',
-            userDistrict: 'SIMULATION MODE',
-          );
-        });
+        final newResult = SafetyCheckResult(
+          isInDanger: demoState.currentRisk == 'HIGH',
+          status: demoState.currentRisk == 'HIGH'
+              ? SafetyStatus.inDangerZone
+              : SafetyStatus.moderate,
+          message: demoState.currentRisk == 'HIGH'
+              ? 'Severe flood risk detected (simulation)'
+              : 'Moderate flood risk detected (simulation)',
+          userDistrict: 'SIMULATION MODE',
+        );
+        
+        setState(() => _safetyResult = newResult);
       }
       return;
     }
+    
     _checkingSafety = true;
 
     final result = await SafetyService.checkUserSafety(_userLocation);
@@ -151,7 +155,6 @@ class _MapScreenState extends State<MapScreen>
 
     _checkingSafety = false;
   }
-
 
   void _onFloodZoneTap(RiskState state) {
     context.read<RiskStateProvider>().clearSearch();
@@ -168,25 +171,19 @@ class _MapScreenState extends State<MapScreen>
 
   Future<void> _openSearchDialog() async {
     final place = await showSearchLocationDialog(context);
-    if (place == null) return;
-    context.read<RiskStateProvider>().clearSelection();
+      if (!mounted || place == null) return;
 
-    final latLng = LatLng(place['lat'], place['lon']);
+      context.read<RiskStateProvider>().clearSelection();
+
+      final latLng = LatLng(place['lat'], place['lon']);
 
     setState(() {
       _searchedLocation = latLng;
       _searchedRiskRadius = null;
     });
 
-    // print('🔍 SEARCH STARTED: ${latLng.latitude}, ${latLng.longitude}');
-    
     final result = await SafetyService.checkLocationRisk(latLng);
     if (!mounted) return;
-
-    // print('🔍 SEARCH RESULT RECEIVED:');
-          // print('  userDistrict = ${result.userDistrict}');
-    // print('  currentRisk = ${result.userRisk}');
-      // print('  confidence = ${result.confidence}');
 
     setState(() {
       _safetyResult = result;
@@ -211,12 +208,7 @@ class _MapScreenState extends State<MapScreen>
           riverDischarge: (result.metrics?['riverDischarge'] as num?)?.toDouble(),
         );
         
-        // print('🔍 CREATING RiskState with districtId = ${searchState.districtId}');
-        // print('🔍 CREATING RiskState with currentRisk = ${searchState.currentRisk}');
-        
         context.read<RiskStateProvider>().setSearchedRiskState(searchState);
-      } else {
-        // print('🔍 NO USER RISK IN RESULT');
       }
     });
 
@@ -247,6 +239,15 @@ class _MapScreenState extends State<MapScreen>
     }
   }
 
+  void _openEmergencyScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const EmergencyScreen(),
+      ),
+    );
+  }
+
   RiskState? _getRelevantPrediction(List<RiskState> states) {
     if (_userLocation == null) return null;
 
@@ -271,6 +272,9 @@ class _MapScreenState extends State<MapScreen>
 
   @override
   Widget build(BuildContext context) {
+    final showEmergencyButton = _safetyResult.status == SafetyStatus.inDangerZone || 
+                               _safetyResult.status == SafetyStatus.moderate;
+
     return Scaffold(
       body: Stack(
         children: [
@@ -297,9 +301,9 @@ class _MapScreenState extends State<MapScreen>
               );
             },
           ),
-          // if (_showRiskPanel) _buildRiskPanel(),
-          if (_safetyResult.isInDanger) _buildSafetyAlert(),
           _buildSafetyStatus(),
+          // Emergency button for moderate/high risk
+          if (showEmergencyButton) _buildEmergencyButton(),
         ],
       ),
     );
@@ -347,7 +351,6 @@ class _MapScreenState extends State<MapScreen>
         _buildFloodZones(),
         Consumer<RiskStateProvider>(
           builder: (_, provider, _) {
-            // if (provider.isShowingSearch) return const SizedBox();
             return _buildZoneMarkers();
           },
         ),
@@ -364,18 +367,15 @@ class _MapScreenState extends State<MapScreen>
 
   Widget _buildDemoFloodZones() {
   return Consumer<DemoStateProvider>(
-    builder: (_, demo, __) {
+    builder: (_, demo, _) {
       final List<Widget> layers = [];
 
       // User Reported Flood
       if (demo.userReportedFlood != null) {
-        print('🧪 DEMO: rendering USER REPORTED flood zone');
-        
         final state = demo.userReportedFlood!;
         layers.add(
           GestureDetector(
             onTap: () {
-              print('🎯 TAPPED: User reported flood demo');
               showRiskInfoSheet(context: context, state: state);
             },
             child: FloodZonesLayer(
@@ -391,13 +391,10 @@ class _MapScreenState extends State<MapScreen>
 
       // Simulated Prediction
       if (demo.simulatedPrediction != null) {
-        print('🧪 DEMO: rendering PREDICTION flood zone');
-        
         final state = demo.simulatedPrediction!;
         layers.add(
           GestureDetector(
             onTap: () {
-              print('🎯 TAPPED: Prediction demo');
               showRiskInfoSheet(context: context, state: state);
             },
             child: FloodZonesLayer(
@@ -424,8 +421,6 @@ class _MapScreenState extends State<MapScreen>
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _updateSafetyCheck(provider.effectiveRiskStates);
         });
-
-        // if (provider.isShowingSearch) return const SizedBox();
 
         return Stack(
           children: provider.effectiveRiskStates.map((state) {
@@ -466,45 +461,79 @@ class _MapScreenState extends State<MapScreen>
     );
   }
 
-  // Widget _buildRiskPanel() {
-  //   return Consumer<RiskStateProvider>(
-  //     builder: (_, provider, _) {
-  //       final displayState = provider.displayRiskState;
-  //       if (displayState == null) return const SizedBox();
+  Widget _buildEmergencyButton() {
+    final isHighRisk = _safetyResult.status == SafetyStatus.inDangerZone;
+    final buttonColor = isHighRisk ? Colors.red : Colors.orange;
+    final buttonText = isHighRisk ? 'EMERGENCY' : 'SAFETY GUIDE';
+    final icon = isHighRisk ? Icons.warning : Icons.security;
 
-  //       return Positioned(
-  //         bottom: 20,
-  //         left: 16,
-  //         right: 16,
-  //         child: RiskPanel(
-  //           title: 'Flood Risk: ${displayState.currentRisk}',
-  //           subtitle: displayState.predictedRisk != null
-  //               ? 'Predicted to increase in ${displayState.predictionWindow} hrs'
-  //               : 'No immediate escalation predicted',
-  //           riskColor: getRiskColor(displayState.currentRisk),
-  //           riskIcon: getRiskIcon(displayState.currentRisk),
-  //           onClose: _toggleRiskPanel,
-  //         ),
-  //       );
-  //     },
-  //   );
-  // }
-
-  Widget _buildSafetyAlert() {
     return Positioned(
-      bottom: 100,
-      left: 16,
+      top: 100, // Positioned below the navbar
       right: 16,
-      child: SafetyAlertBanner(
-        safetyResult: _safetyResult,
-        onTap: _goToMyLocation,
+      child: GestureDetector(
+        onTap: _openEmergencyScreen,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 10,
+          ),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                buttonColor,
+                buttonColor.withOpacity(0.8),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: buttonColor.withOpacity(0.5),
+                blurRadius: 15,
+                offset: const Offset(0, 4),
+                spreadRadius: 2,
+              ),
+            ],
+            border: Border.all(
+              color: Colors.white.withOpacity(0.3),
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                color: Colors.white,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                buttonText,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: Colors.white,
+                size: 14,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildSafetyStatus() {
     return Positioned(
-      bottom: _safetyResult.isInDanger ? 88 : 16,
+      bottom: 16,
       left: 16,
       right: 16,
       child: SafetyStatusIndicator(

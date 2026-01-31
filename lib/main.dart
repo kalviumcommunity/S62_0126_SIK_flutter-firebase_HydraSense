@@ -15,7 +15,7 @@ import 'state/demo_state_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  print('🧪 DEMO: main() started');
+  // print('🧪 DEMO: main() started');
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -28,7 +28,7 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (_) {
-            print('🧪 DEMO: DemoStateProvider initialized');
+            // print('🧪 DEMO: DemoStateProvider initialized');
             return DemoStateProvider();
           },
         ),
