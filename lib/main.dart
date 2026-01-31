@@ -9,10 +9,13 @@ import 'screens/home_screen.dart';
 import 'screens/splash_screen.dart';
 import 'state/risk_state_provider.dart';
 import 'services/risk_firestore_service.dart';
+import 'state/demo_state_provider.dart';
+
 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  print('🧪 DEMO: main() started');
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -22,6 +25,12 @@ void main() async {
       providers: [
         ChangeNotifierProvider(
           create: (_) => RiskStateProvider(RiskFirestoreService()),
+        ),
+        ChangeNotifierProvider(
+          create: (_) {
+            print('🧪 DEMO: DemoStateProvider initialized');
+            return DemoStateProvider();
+          },
         ),
       ],
       child: const MyApp(),
@@ -34,6 +43,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.read<DemoStateProvider>();
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'HydraSense',

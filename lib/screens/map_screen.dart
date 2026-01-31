@@ -9,12 +9,13 @@ import '../models/risk_state.dart';
 import '../state/risk_state_provider.dart';
 import '../services/location_service.dart';
 import '../services/safety_service.dart';
+import '../state/demo_state_provider.dart';
 
 import '../widgets/safety_widgets.dart';
 import '../widgets/flood_zones_layer.dart';
 import '../widgets/map_app_bar.dart';
 import '../widgets/risk_info_sheet.dart';
-import '../widgets/risk_panel.dart';
+// import '../widgets/risk_panel.dart';
 import '../widgets/search_location_dialog.dart';
 import '../widgets/user_location_marker.dart';
 import '../widgets/prediction_warning_banner.dart';
@@ -115,6 +116,31 @@ class _MapScreenState extends State<MapScreen>
   void _updateSafetyCheck(List<RiskState> riskStates) async {
     if (_checkingSafety || _userLocation == null) return;
 
+    final provider = context.read<RiskStateProvider>();
+
+    /// 🧪 DEMO MODE — derive safety from demo state
+    if (provider.isDemoMode) {
+      final demoState = provider.effectiveRiskStates
+          .where((s) => s.districtId == 'DEMO_PREDICTION')
+          .cast<RiskState?>()
+          .firstOrNull;
+
+      if (demoState != null && mounted) {
+        setState(() {
+          _safetyResult = SafetyCheckResult(
+            isInDanger: demoState.currentRisk == 'HIGH',
+            status: demoState.currentRisk == 'HIGH'
+                ? SafetyStatus.inDangerZone
+                : SafetyStatus.moderate,
+            message: demoState.currentRisk == 'HIGH'
+                ? 'Severe flood risk detected (simulation)'
+                : 'Moderate flood risk detected (simulation)',
+            userDistrict: 'SIMULATION MODE',
+          );
+        });
+      }
+      return;
+    }
     _checkingSafety = true;
 
     final result = await SafetyService.checkUserSafety(_userLocation);
@@ -125,6 +151,7 @@ class _MapScreenState extends State<MapScreen>
 
     _checkingSafety = false;
   }
+
 
   void _onFloodZoneTap(RiskState state) {
     context.read<RiskStateProvider>().clearSearch();
@@ -189,7 +216,7 @@ class _MapScreenState extends State<MapScreen>
         
         context.read<RiskStateProvider>().setSearchedRiskState(searchState);
       } else {
-        print('🔍 NO USER RISK IN RESULT');
+        // print('🔍 NO USER RISK IN RESULT');
       }
     });
 
@@ -270,7 +297,7 @@ class _MapScreenState extends State<MapScreen>
               );
             },
           ),
-          if (_showRiskPanel) _buildRiskPanel(),
+          // if (_showRiskPanel) _buildRiskPanel(),
           if (_safetyResult.isInDanger) _buildSafetyAlert(),
           _buildSafetyStatus(),
         ],
@@ -316,6 +343,7 @@ class _MapScreenState extends State<MapScreen>
             return const SizedBox();
           },
         ),
+        _buildDemoFloodZones(),
         _buildFloodZones(),
         Consumer<RiskStateProvider>(
           builder: (_, provider, _) {
@@ -334,17 +362,73 @@ class _MapScreenState extends State<MapScreen>
     );
   }
 
+  Widget _buildDemoFloodZones() {
+  return Consumer<DemoStateProvider>(
+    builder: (_, demo, __) {
+      final List<Widget> layers = [];
+
+      // User Reported Flood
+      if (demo.userReportedFlood != null) {
+        print('🧪 DEMO: rendering USER REPORTED flood zone');
+        
+        final state = demo.userReportedFlood!;
+        layers.add(
+          GestureDetector(
+            onTap: () {
+              print('🎯 TAPPED: User reported flood demo');
+              showRiskInfoSheet(context: context, state: state);
+            },
+            child: FloodZonesLayer(
+              center: LatLng(state.centerLat, state.centerLng),
+              currentRadius: state.currentRadius,
+              predictedRadius: null,
+              color: Colors.redAccent,
+              isSelected: true,
+            ),
+          ),
+        );
+      }
+
+      // Simulated Prediction
+      if (demo.simulatedPrediction != null) {
+        print('🧪 DEMO: rendering PREDICTION flood zone');
+        
+        final state = demo.simulatedPrediction!;
+        layers.add(
+          GestureDetector(
+            onTap: () {
+              print('🎯 TAPPED: Prediction demo');
+              showRiskInfoSheet(context: context, state: state);
+            },
+            child: FloodZonesLayer(
+              center: LatLng(state.centerLat, state.centerLng),
+              currentRadius: state.currentRadius,
+              predictedRadius: state.predictedRadius,
+              color: Colors.deepOrange,
+              isSelected: true,
+            ),
+          ),
+        );
+      }
+
+      return layers.isEmpty ? const SizedBox() : Stack(children: layers);
+    },
+  );
+}
+
+
+
   Widget _buildFloodZones() {
     return Consumer<RiskStateProvider>(
       builder: (_, provider, _) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          _updateSafetyCheck(provider.riskStates);
+          _updateSafetyCheck(provider.effectiveRiskStates);
         });
 
         // if (provider.isShowingSearch) return const SizedBox();
 
         return Stack(
-          children: provider.riskStates.map((state) {
+          children: provider.effectiveRiskStates.map((state) {
             final isSelected = provider.selectedZone?.districtId == state.districtId;
             return FloodZonesLayer(
               center: LatLng(state.centerLat, state.centerLng),
@@ -382,29 +466,29 @@ class _MapScreenState extends State<MapScreen>
     );
   }
 
-  Widget _buildRiskPanel() {
-    return Consumer<RiskStateProvider>(
-      builder: (_, provider, _) {
-        final displayState = provider.displayRiskState;
-        if (displayState == null) return const SizedBox();
+  // Widget _buildRiskPanel() {
+  //   return Consumer<RiskStateProvider>(
+  //     builder: (_, provider, _) {
+  //       final displayState = provider.displayRiskState;
+  //       if (displayState == null) return const SizedBox();
 
-        return Positioned(
-          bottom: 20,
-          left: 16,
-          right: 16,
-          child: RiskPanel(
-            title: 'Flood Risk: ${displayState.currentRisk}',
-            subtitle: displayState.predictedRisk != null
-                ? 'Predicted to increase in ${displayState.predictionWindow} hrs'
-                : 'No immediate escalation predicted',
-            riskColor: getRiskColor(displayState.currentRisk),
-            riskIcon: getRiskIcon(displayState.currentRisk),
-            onClose: _toggleRiskPanel,
-          ),
-        );
-      },
-    );
-  }
+  //       return Positioned(
+  //         bottom: 20,
+  //         left: 16,
+  //         right: 16,
+  //         child: RiskPanel(
+  //           title: 'Flood Risk: ${displayState.currentRisk}',
+  //           subtitle: displayState.predictedRisk != null
+  //               ? 'Predicted to increase in ${displayState.predictionWindow} hrs'
+  //               : 'No immediate escalation predicted',
+  //           riskColor: getRiskColor(displayState.currentRisk),
+  //           riskIcon: getRiskIcon(displayState.currentRisk),
+  //           onClose: _toggleRiskPanel,
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
 
   Widget _buildSafetyAlert() {
     return Positioned(

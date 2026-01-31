@@ -7,10 +7,10 @@ import 'dart:async';
 import 'welcomescreen.dart';
 import 'map_screen.dart';
 import 'emergency_screen.dart';
-// import 'checklist_screen.dart';
 import '../state/risk_state_provider.dart';
 import '../models/risk_state.dart';
 import '../services/location_service.dart';
+import '../services/safety_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,9 +21,12 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final LocationService _locationService = LocationService();
+  
   LatLng? _userLocation;
   bool _isLoading = true;
+  // ignore: prefer_final_fields
   bool _userReportedFlood = false;
+  SafetyCheckResult? _homeSafety;
 
   @override
   void initState() {
@@ -36,34 +39,43 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _getUserLocationAndRisk() async {
     try {
-      final position = await _locationService.getCurrentLocation()
+      final position = await _locationService
+          .getCurrentLocation()
           .timeout(const Duration(seconds: 5));
-      
+
       if (position != null) {
         setState(() {
           _userLocation = LatLng(position.latitude, position.longitude);
           _isLoading = false;
         });
-        // print("Got real location: ${position.latitude}, ${position.longitude}");
+        _checkHomeSafety();
       } else {
         _useDefaultLocation();
       }
-    } catch (e) {
-      // print("Location error: $e");
+    } catch (_) {
       _useDefaultLocation();
     }
   }
 
+  Future<void> _checkHomeSafety() async {
+    if (_userLocation == null) return;
+    final result = await SafetyService.checkUserSafety(_userLocation!);
+    if (!mounted) return;
+    setState(() => _homeSafety = result);
+  }
+
   void _useDefaultLocation() {
     if (!mounted) return;
-    
+
     setState(() {
-      _userLocation = const LatLng(28.7041, 77.1025); // Delhi (LOW risk)
+      _userLocation = const LatLng(28.7041, 77.1025);
       _isLoading = false;
     });
-    
-    // print("Using default location: Delhi (28.7041, 77.1025)");
-    
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkHomeSafety();
+    });
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text("Using approximate location. Enable GPS for accuracy."),
@@ -72,59 +84,24 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Function to find the closest risk zone to user
   RiskState? _findClosestRiskState(List<RiskState> allRiskStates) {
     if (_userLocation == null || allRiskStates.isEmpty) return null;
 
     RiskState? closest;
     double? closestDistance;
 
-    for (final riskState in allRiskStates) {
-      final distance = const Distance().distance(
-        _userLocation!,
-        riskState.center,
-      );
-
+    for (final rs in allRiskStates) {
+      final distance = const Distance().distance(_userLocation!, rs.center);
       if (closestDistance == null || distance < closestDistance) {
         closestDistance = distance;
-        closest = riskState;
+        closest = rs;
       }
     }
 
-    // CHANGED: Decreased from 50km to 20km
     if (closestDistance != null && closestDistance < 20000) {
       return closest;
     }
-
     return null;
-  }
-
-  void _reportFlood() {
-    setState(() {
-      _userReportedFlood = true;
-    });
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Flood reported! Emergency mode activated.'),
-        backgroundColor: Colors.red,
-        duration: Duration(seconds: 3),
-      ),
-    );
-  }
-
-  void _clearFloodReport() {
-    setState(() {
-      _userReportedFlood = false;
-    });
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Flood report cleared.'),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 2),
-      ),
-    );
   }
 
   Color _getRiskColor(String riskLevel) {
@@ -176,7 +153,8 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 // 🔝 Top App Bar
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   child: Row(
                     children: [
                       Container(
@@ -206,7 +184,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           if (!context.mounted) return;
                           Navigator.pushAndRemoveUntil(
                             context,
-                            MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+                            MaterialPageRoute(
+                                builder: (_) => const WelcomeScreen()),
                             (_) => false,
                           );
                         },
@@ -260,15 +239,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 const SizedBox(height: 25),
 
-                // 📊 REAL Flood Risk Card
+                /// ================= FLOOD RISK CARD =================
                 Consumer<RiskStateProvider>(
                   builder: (context, riskProvider, _) {
-                    final riskState = _findClosestRiskState(riskProvider.riskStates);
+                    // ✅ Compute ONCE
+                    final safety = _homeSafety;
+                    final riskState =
+                      _findClosestRiskState(riskProvider.effectiveRiskStates);
                     
-                    // Check conditions
-                    // final bool isApiHighRisk = riskState?.currentRisk.toLowerCase() == 'high';
-                    // final bool isApiModerateRisk = riskState?.currentRisk.toLowerCase() == 'moderate';
-                    final bool hasUserReportedFlood = _userReportedFlood;
+
+                    // ✅ Initialize with defaults
+                    String displayRiskLevel = 'UNKNOWN';
+                    Color displayRiskColor = Colors.grey;
+                    String displayRiskEmoji = '⚪';
+                    String? displayRiskText;
 
                     if (_isLoading) {
                       return const Padding(
@@ -278,81 +262,71 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Padding(
                             padding: EdgeInsets.all(20),
                             child: Center(
-                              child: CircularProgressIndicator(color: Colors.white),
+                              child: CircularProgressIndicator(
+                                  color: Colors.white),
                             ),
                           ),
                         ),
                       );
                     }
 
-                    if (riskState == null && !hasUserReportedFlood) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(26),
-                            color: Colors.white.withOpacity(0.12),
-                            border: Border.all(color: Colors.white.withOpacity(0.2)),
+
+                    final isDemoMode = riskProvider.isDemoMode;
+
+                // 1️⃣ DEMO MODE — highest priority
+                if (isDemoMode && riskState != null) {
+                  displayRiskLevel = riskState.currentRisk;
+                  displayRiskColor = _getRiskColor(riskState.currentRisk);
+                  displayRiskEmoji = _getRiskEmoji(riskState.currentRisk);
+                  displayRiskText =
+                      'Prediction: Risk may increase in ${riskState.predictionWindow} hours';
+
+                // 2️⃣ REAL SAFETY CHECK
+                } else if (safety != null) {
+                  final isSafe = !safety.isInDanger;
+                  displayRiskLevel = isSafe ? 'LOW' : 'HIGH';
+                  displayRiskColor = isSafe ? Colors.green : Colors.red;
+                  displayRiskEmoji = isSafe ? '🟢' : '🔴';
+                  displayRiskText = safety.message;
+
+                // 3️⃣ FIRESTORE FALLBACK
+                } else if (riskState != null) {
+                  displayRiskLevel = riskState.currentRisk;
+                  displayRiskColor = _getRiskColor(riskState.currentRisk);
+                  displayRiskEmoji = _getRiskEmoji(riskState.currentRisk);
+
+                // 4️⃣ TRUE EMPTY STATE (VERY RARE)
+                } else {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(26),
+                        color: Colors.white.withOpacity(0.12),
+                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                      ),
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'No Flood Data Available',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.info, color: Colors.white),
-                                  const SizedBox(width: 10),
-                                  const Text(
-                                    'No Flood Data Available',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              const Text(
-                                'Flood risk data is not available for your current location. Check back later or view the map for nearby areas.',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.white70,
-                                  height: 1.6,
-                                ),
-                              ),
-                            ],
+                          SizedBox(height: 10),
+                          Text(
+                            'Flood risk data is not available for your current location.',
+                            style: TextStyle(color: Colors.white70),
                           ),
-                        ),
-                      );
-                    }
-
-                    // Determine what to display in risk card
-                    final String displayRiskLevel;
-                    final Color displayRiskColor;
-                    final String displayRiskEmoji;
-
-                    if (hasUserReportedFlood) {
-                      displayRiskLevel = 'HIGH';
-                      displayRiskColor = Colors.red;
-                      displayRiskEmoji = '🔴';
-                    } else if (riskState != null) {
-                      displayRiskLevel = riskState.currentRisk;
-                      displayRiskColor = _getRiskColor(riskState.currentRisk);
-                      displayRiskEmoji = _getRiskEmoji(riskState.currentRisk);
-                    } else {
-                      displayRiskLevel = 'UNKNOWN';
-                      displayRiskColor = Colors.grey;
-                      displayRiskEmoji = '⚪';
-                    }
-
-                    String? predictedRiskEmoji;
-                    Color? predictedRiskColor;
-
-                    if (riskState?.predictedRisk != null) {
-                      predictedRiskColor = _getRiskColor(riskState!.predictedRisk!);
-                      predictedRiskEmoji = _getRiskEmoji(riskState.predictedRisk!);
-                    }
+                        ],
+                      ),
+                    ),
+                  );
+                }
 
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -361,113 +335,35 @@ class _HomeScreenState extends State<HomeScreen> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(26),
                           color: displayRiskColor.withOpacity(0.2),
-                          border: Border.all(color: displayRiskColor.withOpacity(0.5), width: 2),
+                          border: Border.all(
+                              color: displayRiskColor.withOpacity(0.5),
+                              width: 2),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Text(
-                                  '$displayRiskEmoji Current Flood Risk',
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                if (hasUserReportedFlood) const SizedBox(width: 10),
-                                if (hasUserReportedFlood)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.withOpacity(0.3),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Row(
-                                      children: [
-                                        Icon(Icons.person, size: 12, color: Colors.white),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          'User Reported',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                              ],
+                            Text(
+                              '$displayRiskEmoji Current Flood Risk',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              displayRiskLevel.toUpperCase(),
+                              displayRiskLevel,
                               style: TextStyle(
                                 fontSize: 32,
                                 fontWeight: FontWeight.bold,
                                 color: displayRiskColor,
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              riskState != null
-                                  ? 'Updated: ${riskState.updatedAt.hour}:${riskState.updatedAt.minute.toString().padLeft(2, '0')}'
-                                  : 'User Reported',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.white70,
-                              ),
-                            ),
-
-                            if (riskState?.predictedRisk != null) ...[
-                              const SizedBox(height: 20),
-                              const Divider(color: Colors.white30),
-                              const SizedBox(height: 15),
-                              Row(
-                                children: [
-                                  Text(
-                                    '$predictedRiskEmoji Predicted Risk',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  if (riskState!.predictionWindow != null)
-                                    Chip(
-                                      label: Text(
-                                        'In ${riskState.predictionWindow} hours',
-                                        style: const TextStyle(fontSize: 12, color: Colors.white),
-                                      ),
-                                      backgroundColor: predictedRiskColor!.withOpacity(0.5),
-                                    ),
-                                ],
-                              ),
+                            if (displayRiskText != null) ...[
                               const SizedBox(height: 8),
                               Text(
-                                riskState.predictedRisk!.toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: predictedRiskColor,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Flood risk is likely to change. Stay prepared.',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ] else if (riskState != null) ...[
-                              const SizedBox(height: 10),
-                              const Text(
-                                'No significant change predicted.',
-                                style: TextStyle(
-                                  fontSize: 14,
+                                displayRiskText,
+                                style: const TextStyle(
                                   color: Colors.white70,
                                 ),
                               ),
@@ -481,153 +377,148 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 const SizedBox(height: 24),
 
-                // 🚨 COMMUNITY FLOOD REPORT
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      color: Colors.white.withOpacity(0.1),
-                      border: Border.all(color: Colors.white.withOpacity(0.3)),
-                    ),
-                    child: Column(
-                      children: [
-                        const Row(
+
+                // 🧪 PREDICTION DEMO
+                Consumer<RiskStateProvider>(
+                  builder: (context, riskProvider, _) {
+                    final isDemoMode = riskProvider.isDemoMode;
+                    
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          color: Colors.orange.withOpacity(0.12),
+                          border: Border.all(color: Colors.orange.withOpacity(0.6)),
+                        ),
+                        child: Column(
                           children: [
-                            Icon(Icons.report_problem, color: Colors.orange),
-                            SizedBox(width: 10),
-                            Text(
-                              'Community Flood Report',
+                            const Row(
+                              children: [
+                                Icon(Icons.trending_up, color: Colors.orange),
+                                SizedBox(width: 10),
+                                Text(
+                                  'Prediction Demo',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            const Text(
+                              'See how HydraSense predicts floods before they happen.',
                               style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                fontSize: 14,
+                                color: Colors.white70,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            GestureDetector(
+                              onTap: () {
+                                final provider = context.read<RiskStateProvider>();
+
+                                if (isDemoMode) {
+                                  provider.stopDemo();
+                                } else {
+                                  final loc = _userLocation;
+                                  if (loc == null) return;
+
+                                  provider.setDemoRisk(
+                                    RiskState(
+                                      districtId: 'DEMO_PREDICTION',
+                                      centerLat: loc.latitude,
+                                      centerLng: loc.longitude,
+
+                                      // 🌊 CURRENT FLOOD STATE
+                                      currentRadius: 2500,
+                                      currentRisk: 'MODERATE',
+
+                                      // 🔮 PREDICTION DATA
+                                      predictedRadius: 4500,
+                                      predictedRisk: 'HIGH',
+                                      predictionWindow: 6,
+                                      predictionExpiresAt: DateTime.now().add(
+                                        const Duration(hours: 6),
+                                      ),
+
+                                      // 📊 CONFIDENCE
+                                      confidence: 0.82,
+
+                                      // 📈 HARD-CODED DEMO METRICS (THIS IS THE KEY)
+                                      rainfallLast24h: 132.5,      // mm
+                                      forecastRain6h: 88.0,        // mm
+                                      forecastRain12h: 145.0,      // mm
+                                      riverDischarge: 920.0,       // cumecs
+
+                                      updatedAt: DateTime.now(),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  gradient: LinearGradient(
+                                    colors: isDemoMode
+                                        ? [Colors.redAccent, Colors.red]
+                                        : [const Color(0xFFFFB347), const Color(0xFFFF8C00)],
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    isDemoMode ? 'STOP DEMO' : 'SEE HOW PREDICTION WORKS',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          'Report flooding in your area if not detected by system',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
-                          ),
-                        ),
-                        const SizedBox(height: 15),
-                        
-                        if (!_userReportedFlood)
-                          GestureDetector(
-                            onTap: _reportFlood,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(15),
-                                color: Colors.orange.withOpacity(0.3),
-                                border: Border.all(color: Colors.orange),
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                                  SizedBox(width: 10),
-                                  Text(
-                                    'REPORT FLOOD IN MY AREA',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.orange,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        else
-                          Column(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(15),
-                                  color: Colors.red.withOpacity(0.2),
-                                  border: Border.all(color: Colors.red),
-                                ),
-                                child: const Row(
-                                  children: [
-                                    Icon(Icons.check_circle, color: Colors.red),
-                                    SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        'You reported flooding in your area',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.red,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              GestureDetector(
-                                onTap: _clearFloodReport,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(15),
-                                    color: Colors.green.withOpacity(0.2),
-                                    border: Border.all(color: Colors.green),
-                                  ),
-                                  child: const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.cleaning_services_rounded, color: Colors.green),
-                                      SizedBox(width: 10),
-                                      Text(
-                                        'CLEAR MY REPORT',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.green,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  },
                 ),
 
                 const SizedBox(height: 24),
 
-                // 🔘 EMERGENCY BUTTON SECTION
+                /// ================= EMERGENCY BUTTON =================
                 Consumer<RiskStateProvider>(
                   builder: (context, riskProvider, _) {
-                    final riskState = _findClosestRiskState(riskProvider.riskStates);
-                    final bool isApiHighRisk = riskState?.currentRisk.toLowerCase() == 'high';
-                    final bool isApiModerateRisk = riskState?.currentRisk.toLowerCase() == 'moderate';
-                    // final bool isApiLowRisk = riskState?.currentRisk.toLowerCase() == 'low';
-                    final bool hasUserReportedFlood = _userReportedFlood;
-                    
-                    // Show BIG emergency button only for API HIGH risk
-                    final bool showBigEmergencyButton = isApiHighRisk;
-                    
-                    // Show SMALL emergency guide button when:
-                    // 1. Risk is HIGH or MODERATE, OR
-                    // 2. User reported flood, OR  
-                    // 3. No data available
-                    final bool showSmallEmergencyButton = 
-                        isApiHighRisk || 
-                        isApiModerateRisk || 
+                    final safety = _homeSafety;
+                    final hasUserReportedFlood = _userReportedFlood;
+                    final isDemoMode = riskProvider.isDemoMode;
+
+                    final bool isDemoHighRisk =
+                        isDemoMode &&
+                        riskProvider.effectiveRiskStates.any(
+                          (s) => s.currentRisk == 'HIGH',
+                        );
+
+                    final bool isApiHighRisk =
+                        !isDemoMode && safety != null && safety.isInDanger;
+
+                    final bool showBigEmergencyButton =
+                        isApiHighRisk || isDemoHighRisk;
+
+                    // Show small emergency button when:
+                    // 1. High risk (API or demo)
+                    // 2. User reported flood
+                    // 3. No safety data available
+                    final bool showSmallEmergencyButton =
+                        showBigEmergencyButton ||
                         hasUserReportedFlood ||
-                        riskState == null;
+                        safety == null;
 
                     return Padding(
                       padding: const EdgeInsets.all(24),
@@ -639,12 +530,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               onTap: () {
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(builder: (_) => const EmergencyScreen()),
+                                  MaterialPageRoute(
+                                      builder: (_) => const EmergencyScreen()),
                                 );
                               },
                               child: Container(
                                 width: double.infinity,
-                                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 20, horizontal: 24),
                                 margin: const EdgeInsets.only(bottom: 16),
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(20),
@@ -666,7 +559,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 child: const Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.warning_rounded, color: Colors.white, size: 30),
+                                    Icon(Icons.warning_rounded,
+                                        color: Colors.white, size: 30),
                                     SizedBox(width: 15),
                                     Expanded(
                                       child: Text(
@@ -682,33 +576,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ),
                             ),
-
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(16),
-                              margin: const EdgeInsets.only(bottom: 16),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                color: Colors.red.withOpacity(0.2),
-                                border: Border.all(color: Colors.red, width: 2),
-                              ),
-                              child: const Row(
-                                children: [
-                                  Icon(Icons.info, color: Colors.white),
-                                  SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      'HIGH FLOOD RISK DETECTED - Tap emergency button for immediate safety guidance',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
                           ],
 
                           // 🗺️ MAP BUTTON
@@ -716,12 +583,14 @@ class _HomeScreenState extends State<HomeScreen> {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (_) => const MapScreen()),
+                                MaterialPageRoute(
+                                    builder: (_) => const MapScreen()),
                               );
                             },
                             child: Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 16),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(30),
                                 gradient: const LinearGradient(
@@ -739,7 +608,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ],
                               ),
                               child: Text(
-                                showBigEmergencyButton ? 'VIEW EMERGENCY MAP' : 'VIEW LIVE FLOOD MAP',
+                                showBigEmergencyButton
+                                    ? 'VIEW EMERGENCY MAP'
+                                    : 'VIEW LIVE FLOOD MAP',
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   fontSize: 16,
@@ -752,28 +623,34 @@ class _HomeScreenState extends State<HomeScreen> {
 
                           const SizedBox(height: 16),
 
-                          // 🔴 SMALL EMERGENCY GUIDE BUTTON (hidden when LOW risk)
+                          // 🔴 SMALL EMERGENCY GUIDE BUTTON
                           if (showSmallEmergencyButton)
                             GestureDetector(
                               onTap: () {
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(builder: (_) => const EmergencyScreen()),
+                                  MaterialPageRoute(
+                                      builder: (_) => const EmergencyScreen()),
                                 );
                               },
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 14, horizontal: 20),
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(20),
                                   color: Colors.red.withOpacity(0.15),
-                                  border: Border.all(color: Colors.red.withOpacity(0.5), width: 1.5),
+                                  border: Border.all(
+                                      color: Colors.red.withOpacity(0.5),
+                                      width: 1.5),
                                 ),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(
                                       Icons.warning_amber_rounded,
-                                      color: hasUserReportedFlood ? Colors.orange : Colors.red,
+                                      color: hasUserReportedFlood
+                                          ? Colors.orange
+                                          : Colors.red,
                                       size: 20,
                                     ),
                                     const SizedBox(width: 10),
@@ -782,7 +659,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                       style: TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.bold,
-                                        color: hasUserReportedFlood ? Colors.orange : Colors.red,
+                                        color: hasUserReportedFlood
+                                            ? Colors.orange
+                                            : Colors.red,
                                       ),
                                     ),
                                   ],

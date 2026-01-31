@@ -8,6 +8,13 @@ class RiskStateProvider extends ChangeNotifier {
   
   RiskState? _selectedZone;
   RiskState? get selectedZone => _selectedZone;
+
+  RiskState? _demoOverride;
+  Timer? _demoTimer;
+
+  bool _isDemoMode = false;
+  bool get isDemoMode => _isDemoMode;
+
   
   List<RiskState> _riskStates = [];
   List<RiskState> get riskStates => _riskStates;
@@ -37,6 +44,62 @@ class RiskStateProvider extends ChangeNotifier {
     if (_riskStates.isNotEmpty) return _riskStates.first;
     return null;
   }
+
+
+List<RiskState> get effectiveRiskStates {
+  final List<RiskState> base = List<RiskState>.from(_riskStates);
+
+  if (_demoOverride != null) {
+    base.add(_demoOverride!);
+  }
+
+  return base;
+}
+
+
+  void setDemoRisk(RiskState? demoState) {
+  _demoTimer?.cancel();
+
+  _demoOverride = demoState;
+  _isDemoMode = demoState != null;
+  notifyListeners();
+
+  if (demoState == null) return;
+
+  // Escalate after 30s
+  _demoTimer = Timer(const Duration(seconds: 60), () {
+    if (_demoOverride == null) return;
+
+    _demoOverride = RiskState(
+      districtId: demoState.districtId,
+      centerLat: demoState.centerLat,
+      centerLng: demoState.centerLng,
+      currentRadius: demoState.predictedRadius ?? demoState.currentRadius,
+      predictedRadius: null,
+      currentRisk: 'HIGH',
+      predictedRisk: null,
+      predictionWindow: null,
+      confidence: demoState.confidence,
+      updatedAt: DateTime.now(),
+    );
+
+    notifyListeners();
+  });
+}
+
+
+  void stopDemo() {
+    _demoTimer?.cancel();
+    _demoTimer = null;
+
+    _demoOverride = null;
+    _isDemoMode = false;
+    notifyListeners();
+  }
+
+
+
+
 
   void selectZone(RiskState zone) {
     _selectedZone = zone;
