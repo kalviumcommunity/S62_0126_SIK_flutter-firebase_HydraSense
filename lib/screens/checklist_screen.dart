@@ -33,7 +33,7 @@ class ChecklistScreen extends StatelessWidget {
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withValues(alpha: 0.15),
                         ),
                         child: const Icon(
                           Icons.arrow_back,
@@ -67,7 +67,7 @@ class ChecklistScreen extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white.withOpacity(0.95),
+                      color: Colors.white.withValues(alpha:0.95),
                     ),
                   ),
                 ),
@@ -81,7 +81,7 @@ class ChecklistScreen extends StatelessWidget {
                     'Essential steps to stay safe',
                     style: TextStyle(
                       fontSize: 16,
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha:0.7),
                     ),
                   ),
                 ),
@@ -105,7 +105,7 @@ class ChecklistScreen extends StatelessWidget {
                           'Know your evacuation routes and shelter locations',
                           'Install the HydraSense app for early warnings',
                         ],
-                        color: Colors.blue.withOpacity(0.2),
+                        color: Colors.blue.withValues(alpha:0.2),
                       ),
 
                       const SizedBox(height: 25),

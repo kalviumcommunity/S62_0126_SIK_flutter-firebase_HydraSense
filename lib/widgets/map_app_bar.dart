@@ -21,14 +21,8 @@ class MapAppBar extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Row(
           children: [
-            _buildLogo(),
+            _buildHomeLogo(context),
             const Spacer(),
-            _actionButton(
-              icon: showPanel ? Icons.visibility_off : Icons.visibility,
-              onTap: onRiskPanelToggle,
-              tooltip: 'Toggle Risk Panel',
-            ),
-            const SizedBox(width: 8),
             _actionButton(
               icon: Icons.search,
               onTap: onSearchTap,
@@ -46,48 +40,54 @@ class MapAppBar extends StatelessWidget {
     );
   }
 
-  Widget _buildLogo() {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 10,
-      ),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF007AFF).withValues(alpha: 0.9),
-            const Color(0xFF5856D6).withValues(alpha: 0.9),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+  Widget _buildHomeLogo(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        // Navigate back to home screen
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 10,
         ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFF007AFF).withOpacity(0.9),
+              const Color(0xFF5856D6).withOpacity(0.9),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-        ],
-      ),
-      child: Row(
-        children: const [
-          Icon(
-            Icons.water_damage,
-            color: Colors.white,
-            size: 22,
-          ),
-          SizedBox(width: 8),
-          Text(
-            'HydraSense',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-              letterSpacing: 0.5,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
             ),
-          ),
-        ],
+          ],
+        ),
+        child: Row(
+          children: const [
+            Icon(
+              Icons.water_damage,
+              color: Colors.white,
+              size: 22,
+            ),
+            SizedBox(width: 8),
+            Text(
+              'HydraSense',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -108,7 +108,7 @@ class MapAppBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
+                color: Colors.black.withOpacity(0.1),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
