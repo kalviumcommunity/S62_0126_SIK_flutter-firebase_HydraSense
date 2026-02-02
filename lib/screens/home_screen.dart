@@ -11,6 +11,8 @@ import '../state/risk_state_provider.dart';
 import '../models/risk_state.dart';
 import '../services/location_service.dart';
 import '../services/safety_service.dart';
+import 'checklist_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -386,11 +388,76 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   const SizedBox(height: 24),
 
+
+                  // 📋 EMERGENCY SAFETY CHECKLIST
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ChecklistScreen(),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(22),
+                          color: Colors.blue.withOpacity(0.15),
+                          border: Border.all(
+                            color: Colors.blue.withOpacity(0.5),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.checklist_rounded, color: Colors.blue, size: 28),
+                            SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Emergency Safety Checklist',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'What to do before, during, and after floods',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 16,
+                              color: Colors.blue,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+
                   // 🧪 PREDICTION DEMO
                   Consumer<RiskStateProvider>(
                     builder: (context, riskProvider, _) {
                       final isDemoMode = riskProvider.isDemoMode;
-                      
+
                       return Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: Container(
@@ -442,26 +509,20 @@ class _HomeScreenState extends State<HomeScreen> {
                                         centerLat: loc.latitude,
                                         centerLng: loc.longitude,
 
-                                        // 🌊 CURRENT FLOOD STATE
                                         currentRadius: 2500,
                                         currentRisk: 'MODERATE',
 
-                                        // 🔮 PREDICTION DATA
                                         predictedRadius: 4500,
                                         predictedRisk: 'HIGH',
                                         predictionWindow: 6,
-                                        predictionExpiresAt: DateTime.now().add(
-                                          const Duration(hours: 6),
-                                        ),
+                                        predictionExpiresAt:
+                                            DateTime.now().add(const Duration(hours: 6)),
 
-                                        // 📊 CONFIDENCE
                                         confidence: 0.82,
-
-                                        // 📈 HARD-CODED DEMO METRICS (THIS IS THE KEY)
-                                        rainfallLast24h: 132.5,      // mm
-                                        forecastRain6h: 88.0,        // mm
-                                        forecastRain12h: 145.0,      // mm
-                                        riverDischarge: 920.0,       // cumecs
+                                        rainfallLast24h: 132.5,
+                                        forecastRain6h: 88.0,
+                                        forecastRain12h: 145.0,
+                                        riverDischarge: 920.0,
 
                                         updatedAt: DateTime.now(),
                                       ),
@@ -476,7 +537,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                     gradient: LinearGradient(
                                       colors: isDemoMode
                                           ? [Colors.redAccent, Colors.red]
-                                          : [const Color(0xFFFFB347), const Color(0xFFFF8C00)],
+                                          : [
+                                              const Color(0xFFFFB347),
+                                              const Color(0xFFFF8C00)
+                                            ],
                                     ),
                                   ),
                                   child: Center(
@@ -500,6 +564,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   const SizedBox(height: 24),
 
+
                   /// ================= EMERGENCY BUTTON =================
                   Consumer<RiskStateProvider>(
                     builder: (context, riskProvider, _) {
@@ -519,72 +584,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       final bool showBigEmergencyButton =
                           isApiHighRisk || isDemoHighRisk;
 
-                      // Show small emergency button when:
-                      // 1. High risk (API or demo)
-                      // 2. User reported flood
-                      // 3. No safety data available
-                      final bool showSmallEmergencyButton =
-                          showBigEmergencyButton ||
-                          hasUserReportedFlood ||
-                          safety == null;
+                      final bool showSmallEmergencyButton = true;
+
 
                       return Padding(
                         padding: const EdgeInsets.all(24),
                         child: Column(
                           children: [
-                            // 🚨 BIG RED EMERGENCY BUTTON (only for API HIGH risk)
-                            if (showBigEmergencyButton) ...[
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (_) => const EmergencyScreen()),
-                                  );
-                                },
-                                child: Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 20, horizontal: 24),
-                                  margin: const EdgeInsets.only(bottom: 16),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(20),
-                                    gradient: const LinearGradient(
-                                      colors: [
-                                        Colors.red,
-                                        Color.fromARGB(255, 180, 0, 0),
-                                      ],
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.red.withOpacity(0.5),
-                                        blurRadius: 20,
-                                        spreadRadius: 2,
-                                        offset: const Offset(0, 5),
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.warning_rounded,
-                                          color: Colors.white, size: 30),
-                                      SizedBox(width: 15),
-                                      Expanded(
-                                        child: Text(
-                                          'EMERGENCY ACTION REQUIRED',
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
 
                             // 🗺️ MAP BUTTON
                             GestureDetector(
@@ -645,11 +651,28 @@ class _HomeScreenState extends State<HomeScreen> {
                                   padding: const EdgeInsets.symmetric(
                                       vertical: 14, horizontal: 20),
                                   decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(20),
-                                    color: Colors.red.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(22),
+                                    color: showBigEmergencyButton
+                                        ? Colors.red.withOpacity(0.35)
+                                        : Colors.red.withOpacity(0.2),
                                     border: Border.all(
-                                        color: Colors.red.withOpacity(0.5),
-                                        width: 1.5),
+                                      color: Colors.red,
+                                      width: showBigEmergencyButton ? 2.5 : 2,
+                                    ),
+                                    boxShadow: showBigEmergencyButton
+                                        ? [
+                                            BoxShadow(
+                                              color: Colors.red.withOpacity(0.6),
+                                              blurRadius: 22,
+                                              spreadRadius: 2,
+                                            ),
+                                          ]
+                                        : [
+                                            BoxShadow(
+                                              color: Colors.red.withOpacity(0.3),
+                                              blurRadius: 10,
+                                            ),
+                                          ],
                                   ),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
