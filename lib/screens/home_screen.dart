@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 import 'dart:async';
-
+import 'dart:math';
 import 'welcomescreen.dart';
 import 'map_screen.dart';
 import 'emergency_screen.dart';
@@ -13,7 +13,6 @@ import '../services/location_service.dart';
 import '../services/safety_service.dart';
 import 'checklist_screen.dart';
 
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -21,21 +20,40 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final LocationService _locationService = LocationService();
   
   LatLng? _userLocation;
   bool _isLoading = true;
   bool _userReportedFlood = false;
   SafetyCheckResult? _homeSafety;
+  late AnimationController _waveController;
+  late Animation<double> _waveAnimation;
 
   @override
   void initState() {
     super.initState();
+    
+    // Wave animation controller
+    _waveController = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    )..repeat(reverse: true);
+    
+    _waveAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _waveController, curve: Curves.easeInOut),
+    );
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<RiskStateProvider>().startListeningAll();
     });
     _getUserLocationAndRisk();
+  }
+
+  @override
+  void dispose() {
+    _waveController.dispose();
+    super.dispose();
   }
 
   Future<void> _getUserLocationAndRisk() async {
@@ -108,27 +126,157 @@ class _HomeScreenState extends State<HomeScreen> {
   Color _getRiskColor(String riskLevel) {
     switch (riskLevel.toLowerCase()) {
       case 'high':
-        return Colors.red;
+        return const Color(0xFFFF4757);
       case 'moderate':
-        return Colors.orange;
+        return const Color(0xFFFFA502);
       case 'low':
-        return Colors.green;
+        return const Color(0xFF2ED573);
       default:
-        return Colors.grey;
+        return const Color(0xFF747D8C);
     }
   }
 
   String _getRiskEmoji(String riskLevel) {
     switch (riskLevel.toLowerCase()) {
       case 'high':
-        return '🔴';
+        return '🌊';
       case 'moderate':
-        return '🟡';
+        return '⚠️';
       case 'low':
-        return '🟢';
+        return '✅';
       default:
-        return '⚪';
+        return '🌤️';
     }
+  }
+
+  Widget _buildRiskIcon(String riskLevel, Color color, double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color.withOpacity(0.15),
+        border: Border.all(color: color, width: 2),
+      ),
+      child: Center(
+        child: Text(
+          _getRiskEmoji(riskLevel),
+          style: TextStyle(fontSize: size * 0.5),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnimatedWave() {
+    return AnimatedBuilder(
+      animation: _waveAnimation,
+      builder: (context, child) {
+        return CustomPaint(
+          size: Size(MediaQuery.of(context).size.width, 60),
+          painter: WavePainter(_waveAnimation.value),
+        );
+      },
+    );
+  }
+
+  Widget _buildFeatureCard({
+    required IconData icon,
+    required Color iconColor,
+    required Color backgroundColor,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    bool hasBadge = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          color: backgroundColor,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: iconColor.withOpacity(0.1),
+                border: Border.all(color: iconColor.withOpacity(0.3), width: 1),
+              ),
+              child: Icon(icon, color: iconColor, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                      if (hasBadge) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF4757),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'NEW',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.1),
+              ),
+              child: const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 16,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -136,7 +284,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
-      // FIX: Remove Container with gradient and use Scaffold backgroundColor instead
       body: Container(
         height: MediaQuery.of(context).size.height,
         width: MediaQuery.of(context).size.width,
@@ -145,576 +292,585 @@ class _HomeScreenState extends State<HomeScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color.fromARGB(255, 6, 70, 100),
-              Color.fromARGB(255, 20, 120, 180),
-              Color.fromARGB(255, 2, 25, 40),
-              Color.fromARGB(255, 2, 25, 40), // Added extra dark color to ensure coverage
+              Color(0xFF0A1E3C),
+              Color(0xFF0F2B4A),
+              Color(0xFF123258),
             ],
-            stops: [0.0, 0.6, 0.9, 1.0], // Control gradient distribution
+            stops: [0.0, 0.6, 1.0],
           ),
         ),
         child: SafeArea(
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: MediaQuery.of(context).size.height,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // 🔝 Top App Bar
-                  Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    child: Row(
-                      children: [
-                        Container(
+            child: Column(
+              children: [
+                // 🌊 Top decorative wave
+                _buildAnimatedWave(),
+
+                // 👤 App Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF00D4FF), Color(0xFF0099FF)],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF00D4FF).withOpacity(0.3),
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.water_drop,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'HydraSense',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          Text(
+                            'Flood Intelligence System',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () async {
+                          await FirebaseAuth.instance.signOut();
+                          if (!context.mounted) return;
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+                            (_) => false,
+                          );
+                        },
+                        child: Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.15),
+                            color: Colors.white.withOpacity(0.1),
+                            border: Border.all(color: Colors.white.withOpacity(0.2)),
                           ),
                           child: const Icon(
-                            Icons.water_drop,
-                            color: Colors.lightBlueAccent,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'HydraSense',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                            Icons.logout,
                             color: Colors.white,
+                            size: 20,
                           ),
                         ),
-                        const Spacer(),
-                        GestureDetector(
-                          onTap: () async {
-                            await FirebaseAuth.instance.signOut();
-                            if (!context.mounted) return;
-                            Navigator.pushAndRemoveUntil(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const WelcomeScreen()),
-                              (_) => false,
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(0.15),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 👋 Welcome Card
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.05),
+                          Colors.white.withOpacity(0.02),
+                        ],
+                      ),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
                             ),
-                            child: const Icon(
-                              Icons.logout,
-                              color: Colors.white,
-                              size: 20,
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF667EEA).withOpacity(0.3),
+                                blurRadius: 10,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Welcome back,',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white.withOpacity(0.7),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                user?.email?.split('@').first ?? 'User',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: const Color(0xFF00D4FF).withOpacity(0.1),
+                            border: Border.all(color: const Color(0xFF00D4FF).withOpacity(0.3)),
+                          ),
+                          child: Text(
+                            'Active',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF00D4FF),
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
+                ),
 
-                  const SizedBox(height: 20),
+                const SizedBox(height: 8),
 
-                  // 👋 Welcome Section
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Welcome back,',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.white.withOpacity(0.85),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        user?.email ?? 'User',
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 25),
-
-                  /// ================= FLOOD RISK CARD =================
-                  Consumer<RiskStateProvider>(
-                    builder: (context, riskProvider, _) {
-                      // ✅ Compute ONCE
-                      final safety = _homeSafety;
-                      final riskState =
+                /// ================= FLOOD RISK CARD =================
+                Consumer<RiskStateProvider>(
+                  builder: (context, riskProvider, _) {
+                    final safety = _homeSafety;
+                    final riskState =
                         _findClosestRiskState(riskProvider.effectiveRiskStates);
-                      
 
-                      // ✅ Initialize with defaults
-                      String displayRiskLevel = 'UNKNOWN';
-                      Color displayRiskColor = Colors.grey;
-                      String displayRiskEmoji = '⚪';
-                      String? displayRiskText;
+                    String displayRiskLevel = 'UNKNOWN';
+                    Color displayRiskColor = const Color(0xFF747D8C);
+                    String displayRiskEmoji = '🌤️';
+                    String? displayRiskText;
 
-                      if (_isLoading) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 24),
-                          child: Card(
-                            color: Colors.white12,
-                            child: Padding(
-                              padding: EdgeInsets.all(20),
-                              child: Center(
-                                child: CircularProgressIndicator(
-                                    color: Colors.white),
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-
-                      final isDemoMode = riskProvider.isDemoMode;
-
-                      // 1️⃣ DEMO MODE — highest priority
-                      if (isDemoMode && riskState != null) {
-                        displayRiskLevel = riskState.currentRisk;
-                        displayRiskColor = _getRiskColor(riskState.currentRisk);
-                        displayRiskEmoji = _getRiskEmoji(riskState.currentRisk);
-                        displayRiskText =
-                            'Prediction: Risk may increase in ${riskState.predictionWindow} hours';
-
-                      // 2️⃣ REAL SAFETY CHECK
-                      } else if (safety != null) {
-                        final isSafe = !safety.isInDanger;
-                        displayRiskLevel = isSafe ? 'LOW' : 'HIGH';
-                        displayRiskColor = isSafe ? Colors.green : Colors.red;
-                        displayRiskEmoji = isSafe ? '🟢' : '🔴';
-                        displayRiskText = safety.message;
-
-                      // 3️⃣ FIRESTORE FALLBACK
-                      } else if (riskState != null) {
-                        displayRiskLevel = riskState.currentRisk;
-                        displayRiskColor = _getRiskColor(riskState.currentRisk);
-                        displayRiskEmoji = _getRiskEmoji(riskState.currentRisk);
-
-                      // 4️⃣ TRUE EMPTY STATE (VERY RARE)
-                      } else {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(26),
-                              color: Colors.white.withOpacity(0.12),
-                              border: Border.all(color: Colors.white.withOpacity(0.2)),
-                            ),
-                            child: const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'No Flood Data Available',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                SizedBox(height: 10),
-                                Text(
-                                  'Flood risk data is not available for your current location.',
-                                  style: TextStyle(color: Colors.white70),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-
+                    if (_isLoading) {
                       return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                         child: Container(
-                          padding: const EdgeInsets.all(24),
+                          padding: const EdgeInsets.all(30),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(26),
-                            color: displayRiskColor.withOpacity(0.2),
-                            border: Border.all(
-                                color: displayRiskColor.withOpacity(0.5),
-                                width: 2),
+                            borderRadius: BorderRadius.circular(24),
+                            color: Colors.white.withOpacity(0.05),
+                            border: Border.all(color: Colors.white.withOpacity(0.1)),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '$displayRiskEmoji Current Flood Risk',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                displayRiskLevel,
-                                style: TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                  color: displayRiskColor,
-                                ),
-                              ),
-                              if (displayRiskText != null) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  displayRiskText,
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                  ),
-                                ),
-                              ],
-                            ],
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation(Color(0xFF00D4FF)),
+                            ),
                           ),
                         ),
                       );
-                    },
-                  ),
+                    }
 
-                  const SizedBox(height: 24),
+                    final isDemoMode = riskProvider.isDemoMode;
 
+                    if (isDemoMode && riskState != null) {
+                      displayRiskLevel = riskState.currentRisk;
+                      displayRiskColor = _getRiskColor(riskState.currentRisk);
+                      displayRiskEmoji = _getRiskEmoji(riskState.currentRisk);
+                      displayRiskText =
+                          'Prediction: Risk may increase in ${riskState.predictionWindow} hours';
+                    } else if (safety != null) {
+                      final isSafe = !safety.isInDanger;
+                      displayRiskLevel = isSafe ? 'LOW' : 'HIGH';
+                      displayRiskColor = _getRiskColor(displayRiskLevel);
+                      displayRiskEmoji = isSafe ? '✅' : '🌊';
+                      displayRiskText = safety.message;
+                    } else if (riskState != null) {
+                      displayRiskLevel = riskState.currentRisk;
+                      displayRiskColor = _getRiskColor(riskState.currentRisk);
+                      displayRiskEmoji = _getRiskEmoji(riskState.currentRisk);
+                    }
 
-                  // 📋 EMERGENCY SAFETY CHECKLIST
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ChecklistScreen(),
-                          ),
-                        );
-                      },
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                       child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(18),
+                        padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(22),
-                          color: Colors.blue.withOpacity(0.15),
-                          border: Border.all(
-                            color: Colors.blue.withOpacity(0.5),
-                            width: 1.5,
+                          borderRadius: BorderRadius.circular(28),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              displayRiskColor.withOpacity(0.15),
+                              displayRiskColor.withOpacity(0.05),
+                            ],
                           ),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.checklist_rounded, color: Colors.blue, size: 28),
-                            SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Emergency Safety Checklist',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    'What to do before, during, and after floods',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.white70,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Icon(
-                              Icons.arrow_forward_ios_rounded,
-                              size: 16,
-                              color: Colors.blue,
+                          border: Border.all(color: displayRiskColor.withOpacity(0.3), width: 1),
+                          boxShadow: [
+                            BoxShadow(
+                              color: displayRiskColor.withOpacity(0.1),
+                              blurRadius: 20,
+                              spreadRadius: 2,
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-
-                  // 🧪 PREDICTION DEMO
-                  Consumer<RiskStateProvider>(
-                    builder: (context, riskProvider, _) {
-                      final isDemoMode = riskProvider.isDemoMode;
-
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            color: Colors.orange.withOpacity(0.12),
-                            border: Border.all(color: Colors.orange.withOpacity(0.6)),
-                          ),
-                          child: Column(
-                            children: [
-                              const Row(
-                                children: [
-                                  Icon(Icons.trending_up, color: Colors.orange),
-                                  SizedBox(width: 10),
-                                  Text(
-                                    'Prediction Demo',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              const Text(
-                                'See how HydraSense predicts floods before they happen.',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-
-                              GestureDetector(
-                                onTap: () {
-                                  final provider = context.read<RiskStateProvider>();
-
-                                  if (isDemoMode) {
-                                    provider.stopDemo();
-                                  } else {
-                                    final loc = _userLocation;
-                                    if (loc == null) return;
-
-                                    provider.setDemoRisk(
-                                      RiskState(
-                                        districtId: 'DEMO_PREDICTION',
-                                        centerLat: loc.latitude,
-                                        centerLng: loc.longitude,
-
-                                        currentRadius: 2500,
-                                        currentRisk: 'MODERATE',
-
-                                        predictedRadius: 4500,
-                                        predictedRisk: 'HIGH',
-                                        predictionWindow: 6,
-                                        predictionExpiresAt:
-                                            DateTime.now().add(const Duration(hours: 6)),
-
-                                        confidence: 0.82,
-                                        rainfallLast24h: 132.5,
-                                        forecastRain6h: 88.0,
-                                        forecastRain12h: 145.0,
-                                        riverDischarge: 920.0,
-
-                                        updatedAt: DateTime.now(),
-                                      ),
-                                    );
-                                  }
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  width: double.infinity,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(16),
-                                    gradient: LinearGradient(
-                                      colors: isDemoMode
-                                          ? [Colors.redAccent, Colors.red]
-                                          : [
-                                              const Color(0xFFFFB347),
-                                              const Color(0xFFFF8C00)
-                                            ],
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      isDemoMode ? 'STOP DEMO' : 'SEE HOW PREDICTION WORKS',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: 24),
-
-
-                  /// ================= EMERGENCY BUTTON =================
-                  Consumer<RiskStateProvider>(
-                    builder: (context, riskProvider, _) {
-                      final safety = _homeSafety;
-                      final hasUserReportedFlood = _userReportedFlood;
-                      final isDemoMode = riskProvider.isDemoMode;
-
-                      final bool isDemoHighRisk =
-                          isDemoMode &&
-                          riskProvider.effectiveRiskStates.any(
-                            (s) => s.currentRisk == 'HIGH',
-                          );
-
-                      final bool isApiHighRisk =
-                          !isDemoMode && safety != null && safety.isInDanger;
-
-                      final bool showBigEmergencyButton =
-                          isApiHighRisk || isDemoHighRisk;
-
-                      final bool showSmallEmergencyButton = true;
-
-
-                      return Padding(
-                        padding: const EdgeInsets.all(24),
                         child: Column(
                           children: [
-
-                            // 🗺️ MAP BUTTON
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) => const MapScreen()),
-                                );
-                              },
-                              child: Container(
-                                width: double.infinity,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(30),
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color.fromARGB(255, 120, 210, 255),
-                                      Color.fromARGB(255, 30, 160, 220),
-                                    ],
-                                  ),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Colors.black26,
-                                      blurRadius: 18,
-                                      offset: Offset(0, 8),
-                                    ),
-                                  ],
-                                ),
-                                child: Text(
-                                  showBigEmergencyButton
-                                      ? 'VIEW EMERGENCY MAP'
-                                      : 'VIEW LIVE FLOOD MAP',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 16),
-
-                            // 🔴 SMALL EMERGENCY GUIDE BUTTON
-                            if (showSmallEmergencyButton)
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (_) => const EmergencyScreen()),
-                                  );
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 14, horizontal: 20),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(22),
-                                    color: showBigEmergencyButton
-                                        ? Colors.red.withOpacity(0.35)
-                                        : Colors.red.withOpacity(0.2),
-                                    border: Border.all(
-                                      color: Colors.red,
-                                      width: showBigEmergencyButton ? 2.5 : 2,
-                                    ),
-                                    boxShadow: showBigEmergencyButton
-                                        ? [
-                                            BoxShadow(
-                                              color: Colors.red.withOpacity(0.6),
-                                              blurRadius: 22,
-                                              spreadRadius: 2,
-                                            ),
-                                          ]
-                                        : [
-                                            BoxShadow(
-                                              color: Colors.red.withOpacity(0.3),
-                                              blurRadius: 10,
-                                            ),
-                                          ],
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                            Row(
+                              children: [
+                                _buildRiskIcon(displayRiskLevel, displayRiskColor, 48),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Icon(
-                                        Icons.warning_amber_rounded,
-                                        color: hasUserReportedFlood
-                                            ? Colors.orange
-                                            : Colors.red,
-                                        size: 20,
-                                      ),
-                                      const SizedBox(width: 10),
                                       Text(
-                                        'Emergency Safety Guide',
+                                        'FLOOD RISK STATUS',
                                         style: TextStyle(
-                                          fontSize: 15,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white.withOpacity(0.7),
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        displayRiskLevel,
+                                        style: TextStyle(
+                                          fontSize: 32,
                                           fontWeight: FontWeight.bold,
-                                          color: hasUserReportedFlood
-                                              ? Colors.orange
-                                              : Colors.red,
+                                          color: displayRiskColor,
+                                          letterSpacing: 0.5,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            if (displayRiskText != null)
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  color: Colors.white.withOpacity(0.05),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.info_outline_rounded,
+                                      color: displayRiskColor,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        displayRiskText,
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                           ],
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
+                ),
 
-                  // FIX: Add extra padding at the bottom to ensure gradient covers everything
-                  SizedBox(
-                    height: MediaQuery.of(context).padding.bottom + 20,
+                // 🛡️ Safety Features Section
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 4,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(2),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF00D4FF), Color(0xFF0099FF)],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Safety Features',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+
+                // 📋 Emergency Checklist Card
+                _buildFeatureCard(
+                  icon: Icons.checklist_rounded,
+                  iconColor: const Color(0xFF2ED573),
+                  backgroundColor: const Color(0xFF1E3A3F),
+                  title: 'Emergency Safety Checklist',
+                  subtitle: 'Step-by-step guide for flood preparedness',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ChecklistScreen()),
+                    );
+                  },
+                  hasBadge: false,
+                ),
+
+                // 🧪 Prediction Demo Card
+                Consumer<RiskStateProvider>(
+                  builder: (context, riskProvider, _) {
+                    final isDemoMode = riskProvider.isDemoMode;
+                    
+                    return _buildFeatureCard(
+                      icon: Icons.trending_up_rounded,
+                      iconColor: const Color(0xFFFFA502),
+                      backgroundColor: const Color(0xFF3A2E1E),
+                      title: 'Prediction Demo',
+                      subtitle: isDemoMode
+                          ? 'Demo is active - Tap to stop'
+                          : 'See real-time flood predictions',
+                      onTap: () {
+                        final provider = context.read<RiskStateProvider>();
+                        if (isDemoMode) {
+                          provider.stopDemo();
+                        } else {
+                          final loc = _userLocation;
+                          if (loc == null) return;
+                          
+                          provider.setDemoRisk(
+                            RiskState(
+                              districtId: 'DEMO_PREDICTION',
+                              centerLat: loc.latitude,
+                              centerLng: loc.longitude,
+                              currentRadius: 2500,
+                              currentRisk: 'MODERATE',
+                              predictedRadius: 4500,
+                              predictedRisk: 'HIGH',
+                              predictionWindow: 6,
+                              predictionExpiresAt:
+                                  DateTime.now().add(const Duration(hours: 6)),
+                              confidence: 0.82,
+                              rainfallLast24h: 132.5,
+                              forecastRain6h: 88.0,
+                              forecastRain12h: 145.0,
+                              riverDischarge: 920.0,
+                              updatedAt: DateTime.now(),
+                            ),
+                          );
+                        }
+                      },
+                      hasBadge: isDemoMode,
+                    );
+                  },
+                ),
+
+                // 🗺️ Map Card
+                _buildFeatureCard(
+                  icon: Icons.map_rounded,
+                  iconColor: const Color(0xFF00D4FF),
+                  backgroundColor: const Color(0xFF1E2F4A),
+                  title: 'Live Flood Map',
+                  subtitle: 'Real-time flood zones and risk areas',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MapScreen()),
+                    );
+                  },
+                  hasBadge: false,
+                ),
+
+                // 🔴 Emergency Guide Card
+                _buildFeatureCard(
+                  icon: Icons.warning_amber_rounded,
+                  iconColor: const Color(0xFFFF4757),
+                  backgroundColor: const Color(0xFF4A1E2F),
+                  title: 'Emergency Safety Guide',
+                  subtitle: 'What to do during flood emergencies',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const EmergencyScreen()),
+                    );
+                  },
+                  hasBadge: true,
+                ),
+
+                // 🚨 Emergency Action Button
+                Consumer<RiskStateProvider>(
+                  builder: (context, riskProvider, _) {
+                    final safety = _homeSafety;
+                    final isDemoMode = riskProvider.isDemoMode;
+                    final isDemoHighRisk = isDemoMode &&
+                        riskProvider.effectiveRiskStates.any(
+                          (s) => s.currentRisk == 'HIGH',
+                        );
+                    final isApiHighRisk =
+                        !isDemoMode && safety != null && safety.isInDanger;
+                    final showBigEmergency = isApiHighRisk || isDemoHighRisk;
+
+                    return Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          if (showBigEmergency)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFFF4757),
+                                    Color(0xFFFF3838),
+                                  ],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFFF4757).withOpacity(0.5),
+                                    blurRadius: 20,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'EMERGENCY ALERT',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        Text(
+                                          isDemoMode
+                                              ? 'Demo: High flood risk detected'
+                                              : 'High flood risk in your area',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.arrow_forward_ios_rounded,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                          // Quick Actions Row
+                          
+                          
+                                     
+                         
+                        ],
+                      ),
+                    );
+                  },
+                ),
+
+                // 🌊 Bottom decorative wave
+                Transform.rotate(
+                  angle: 3.14,
+                  child: _buildAnimatedWave(),
+                ),
+
+                // Bottom padding
+                SizedBox(height: MediaQuery.of(context).padding.bottom + 20),
+              ],
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+// Custom painter for wave animation
+class WavePainter extends CustomPainter {
+  final double animationValue;
+
+  WavePainter(this.animationValue);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF00D4FF).withOpacity(0.15)
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    path.moveTo(0, size.height * 0.5);
+    
+    for (double i = 0; i < size.width; i++) {
+      final y = size.height * 0.5 +
+          sin((i * 0.02) + (animationValue * 2 * 3.14)) * 15;
+      path.lineTo(i, y);
+    }
+    
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+    
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant WavePainter oldDelegate) {
+    return oldDelegate.animationValue != animationValue;
   }
 }
