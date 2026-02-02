@@ -152,14 +152,14 @@ class _SplashScreenState extends State<SplashScreen>
 
                       const SizedBox(height: 8),
 
-                      const Text(
-                        'Thicc Thighs save lives',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
+                      // const Text(
+                      //   'Thicc Thighs save lives',
+                      //   style: TextStyle(
+                      //     color: Colors.white70,
+                      //     fontSize: 14,
+                      //     letterSpacing: 0.5,
+                      //   ),
+                      // ),
 
                       const SizedBox(height: 40),
 
